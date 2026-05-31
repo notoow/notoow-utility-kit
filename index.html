@@ -1,0 +1,1525 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basic Utility App</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.0.3/dist/fonts/geist-sans/style.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.5.2/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07080b;
+      --text: #f7f8fb;
+      --muted: rgba(247, 248, 251, 0.67);
+      --quiet: rgba(247, 248, 251, 0.48);
+      --stroke: rgba(255, 255, 255, 0.18);
+      --stroke-strong: rgba(255, 255, 255, 0.34);
+      --glass-tint: rgba(18, 20, 27, 0.45);
+      --glass-tint-strong: rgba(21, 24, 32, 0.66);
+      --shadow: rgba(0, 0, 0, 0.38);
+      --ok: #47d18c;
+      --warn: #ffd166;
+      --danger: #ff5d7a;
+      --blue: #5ec7ff;
+      --green: #48d597;
+      --pink: #ff6e99;
+      --violet: #9b8cff;
+      font-family: "Geist Sans", "Archivo", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: geometricPrecision;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      min-height: 100%;
+      background: var(--bg);
+    }
+
+    body {
+      min-height: 100vh;
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      overflow-x: hidden;
+      padding: 30px 18px 24px;
+      background:
+        linear-gradient(130deg, rgba(255, 255, 255, 0.08), transparent 26%),
+        linear-gradient(245deg, rgba(88, 199, 255, 0.15), transparent 32%),
+        linear-gradient(330deg, rgba(255, 110, 153, 0.12), transparent 34%),
+        var(--bg);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .liquid-filter-bank {
+      position: fixed;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+
+    .scene {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 72px 72px;
+    }
+
+    .scene::before,
+    .scene::after {
+      content: "";
+      position: absolute;
+      inset: -12%;
+      opacity: 0.72;
+      transform: rotate(-8deg);
+      background:
+        linear-gradient(112deg, transparent 0 17%, rgba(71, 209, 140, 0.22) 17% 25%, transparent 25% 42%, rgba(94, 199, 255, 0.2) 42% 49%, transparent 49% 70%, rgba(255, 110, 153, 0.17) 70% 78%, transparent 78%),
+        repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 16px);
+      filter: saturate(1.15);
+    }
+
+    .scene::after {
+      inset: -4%;
+      opacity: 0.32;
+      transform: rotate(7deg) translateY(4%);
+      background:
+        linear-gradient(170deg, transparent 0 12%, rgba(255, 255, 255, 0.16) 12% 13%, transparent 13% 38%, rgba(155, 140, 255, 0.18) 38% 46%, transparent 46% 68%, rgba(255, 209, 102, 0.14) 68% 74%, transparent 74%),
+        repeating-linear-gradient(0deg, transparent 0 22px, rgba(255, 255, 255, 0.045) 22px 23px);
+    }
+
+    .app-shell {
+      width: min(1130px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .liquid {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      background:
+        linear-gradient(140deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055) 36%, rgba(255, 255, 255, 0.025)),
+        var(--glass-tint);
+      border: 1px solid var(--stroke);
+      backdrop-filter: blur(26px) saturate(1.65) brightness(1.08);
+      -webkit-backdrop-filter: blur(26px) saturate(1.65) brightness(1.08);
+      box-shadow:
+        0 26px 60px var(--shadow),
+        inset 0 1px 1px rgba(255, 255, 255, 0.42),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.34),
+        inset 14px 18px 34px rgba(255, 255, 255, 0.035);
+    }
+
+    @supports ((backdrop-filter: url("#fluid-glass-distortion")) or (-webkit-backdrop-filter: url("#fluid-glass-distortion"))) {
+      .liquid {
+        backdrop-filter: url("#fluid-glass-distortion") blur(22px) saturate(1.75) brightness(1.08);
+        -webkit-backdrop-filter: url("#fluid-glass-distortion") blur(22px) saturate(1.75) brightness(1.08);
+      }
+    }
+
+    .liquid::before,
+    .liquid::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .liquid::before {
+      background:
+        radial-gradient(circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.35), transparent 24%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.17), transparent 32%);
+      mix-blend-mode: screen;
+      opacity: 0.82;
+    }
+
+    .liquid::after {
+      inset: 1px;
+      border-radius: inherit;
+      box-shadow:
+        inset 1px 0 0 rgba(255, 255, 255, 0.26),
+        inset -1px 0 0 rgba(255, 255, 255, 0.08),
+        inset 0 -18px 34px rgba(0, 0, 0, 0.2);
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent 16% 84%, rgba(255, 255, 255, 0.11)),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.09), transparent 18% 80%, rgba(255, 255, 255, 0.08));
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      min-height: 82px;
+      border-radius: 30px;
+      padding: 16px 18px;
+    }
+
+    .brand {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      width: fit-content;
+      color: rgba(247, 248, 251, 0.72);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .brand h1 {
+      font-family: "Archivo", sans-serif;
+      font-size: clamp(30px, 5vw, 48px);
+      font-weight: 800;
+      letter-spacing: 0;
+      line-height: 1;
+    }
+
+    .brand p {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .system-state {
+      min-width: 192px;
+      border-radius: 999px;
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      color: rgba(247, 248, 251, 0.78);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .state-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 14px rgba(71, 209, 140, 0.95);
+      flex: 0 0 auto;
+    }
+
+    .utility-panel {
+      border-radius: 34px;
+      padding: 20px;
+    }
+
+    .widget-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 15px;
+    }
+
+    .widget {
+      grid-column: span 3;
+      min-height: 304px;
+      border-radius: 27px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transform: translateZ(0);
+      transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease;
+    }
+
+    .widget:hover {
+      transform: translateY(-2px);
+      border-color: var(--stroke-strong);
+      background:
+        linear-gradient(140deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.07) 36%, rgba(255, 255, 255, 0.03)),
+        var(--glass-tint-strong);
+      box-shadow:
+        0 32px 70px rgba(0, 0, 0, 0.45),
+        inset 0 1px 1px rgba(255, 255, 255, 0.48),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.34);
+    }
+
+    .widget.wide {
+      grid-column: span 6;
+      min-height: 290px;
+    }
+
+    .widget-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 44px;
+    }
+
+    .icon-box {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      background:
+        linear-gradient(140deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.08)),
+        rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        inset 0 -8px 18px rgba(0, 0, 0, 0.16),
+        0 10px 22px rgba(0, 0, 0, 0.32);
+    }
+
+    .icon-box.orange { color: #ffd0a8; }
+    .icon-box.blue { color: #bfeaff; }
+    .icon-box.green { color: #bdffd8; }
+    .icon-box.purple { color: #ead4ff; }
+    .icon-box.slate { color: #e1e8f4; }
+
+    .widget-title {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .widget-title strong {
+      font-size: 17px;
+      font-weight: 760;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .widget-title span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .input-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .ios-input {
+      width: 100%;
+      height: 46px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      background: rgba(4, 6, 10, 0.45);
+      color: var(--text);
+      outline: none;
+      padding: 0 14px;
+      font-size: 14px;
+      box-shadow:
+        inset 0 1px 7px rgba(0, 0, 0, 0.32),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .ios-input::placeholder {
+      color: rgba(247, 248, 251, 0.43);
+    }
+
+    .ios-input:focus {
+      border-color: rgba(255, 255, 255, 0.42);
+      background: rgba(3, 5, 9, 0.55);
+      box-shadow:
+        inset 0 1px 7px rgba(0, 0, 0, 0.32),
+        0 0 0 3px rgba(255, 255, 255, 0.09);
+    }
+
+    .ios-input[readonly] {
+      color: rgba(247, 248, 251, 0.84);
+    }
+
+    .url-widget {
+      position: relative;
+    }
+
+    .url-watermark {
+      position: absolute;
+      right: 18px;
+      bottom: 74px;
+      color: rgba(255, 255, 255, 0.09);
+      font-family: "Archivo", sans-serif;
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: 0;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .watermark-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: fit-content;
+      color: rgba(247, 248, 251, 0.72);
+      font-size: 12px;
+      font-weight: 720;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .segmented {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+      gap: 4px;
+      padding: 4px;
+      border-radius: 16px;
+      background: rgba(4, 6, 10, 0.48);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        inset 0 1px 6px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .segment {
+      min-width: 0;
+      min-height: 36px;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: rgba(247, 248, 251, 0.58);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 680;
+      transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    }
+
+    .segment:hover {
+      color: var(--text);
+    }
+
+    .segment.active {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.09)),
+        rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      box-shadow:
+        0 7px 16px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    }
+
+    .drop-zone,
+    .paste-zone {
+      border: 1px dashed rgba(255, 255, 255, 0.25);
+      border-radius: 22px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035)),
+        rgba(4, 6, 10, 0.2);
+      min-height: 96px;
+      display: grid;
+      place-items: center;
+      padding: 14px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.45;
+      transition: border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .drop-zone.active,
+    .paste-zone:focus,
+    .paste-zone.active {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.52);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)),
+        rgba(4, 6, 10, 0.28);
+    }
+
+    .action-row {
+      margin-top: auto;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ios-btn {
+      min-height: 44px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045)),
+        rgba(255, 255, 255, 0.055);
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 730;
+      white-space: nowrap;
+      flex: 1 1 128px;
+      transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+      box-shadow:
+        0 10px 20px rgba(0, 0, 0, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+
+    .ios-btn:hover {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.07)),
+        rgba(255, 255, 255, 0.075);
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-1px);
+    }
+
+    .ios-btn:active {
+      transform: translateY(0) scale(0.985);
+    }
+
+    .ios-btn.primary {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(225, 231, 238, 0.9)),
+        #ffffff;
+      color: #06070a;
+      border-color: rgba(255, 255, 255, 0.44);
+      box-shadow:
+        0 14px 28px rgba(255, 255, 255, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+    }
+
+    .ios-btn.icon-only {
+      flex: 0 0 46px;
+      width: 46px;
+      padding: 0;
+    }
+
+    .ios-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+      transform: none;
+    }
+
+    .status {
+      min-height: 22px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .status.ok { color: var(--ok); }
+    .status.warn { color: var(--warn); }
+    .status.error { color: var(--danger); }
+
+    .qr-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 194px;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .qr-box,
+    .preview-box {
+      min-height: 194px;
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04)),
+        rgba(4, 6, 10, 0.34);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        0 16px 28px rgba(0, 0, 0, 0.2);
+    }
+
+    #qrCanvas {
+      width: 164px;
+      height: 164px;
+      border-radius: 14px;
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
+    }
+
+    .preview-box {
+      min-height: 150px;
+      padding: 10px;
+    }
+
+    .preview-box img {
+      display: none;
+      max-width: 100%;
+      max-height: 176px;
+      border-radius: 14px;
+      object-fit: contain;
+    }
+
+    .preview-box.has-image img {
+      display: block;
+    }
+
+    .preview-empty {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .preview-box.has-image .preview-empty {
+      display: none;
+    }
+
+    .hidden-input {
+      display: none;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-radius: 26px;
+      padding: 12px 15px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .footer a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(247, 248, 251, 0.82);
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.055);
+    }
+
+    .footer a:hover {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        transition-duration: 0.001ms !important;
+        animation-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    @media (prefers-contrast: more) {
+      .liquid {
+        background: rgba(12, 14, 18, 0.88);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+      }
+
+      .status,
+      .brand p,
+      .widget-title span,
+      .footer {
+        color: rgba(255, 255, 255, 0.86);
+      }
+    }
+
+    @media (max-width: 860px) {
+      body {
+        padding: 20px 12px;
+      }
+
+      .topbar,
+      .qr-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .system-state {
+        width: fit-content;
+        min-width: 0;
+      }
+
+      .widget {
+        grid-column: span 6;
+      }
+
+      .footer {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .footer-links {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .topbar,
+      .utility-panel,
+      .footer {
+        border-radius: 24px;
+      }
+
+      .utility-panel {
+        padding: 12px;
+      }
+
+      .widget {
+        min-height: auto;
+        padding: 16px;
+        border-radius: 22px;
+      }
+
+      .brand h1 {
+        font-size: 32px;
+      }
+
+      .widget-title strong,
+      .widget-title span {
+        white-space: normal;
+      }
+
+      .control-row {
+        grid-template-columns: 1fr;
+      }
+
+      .ios-btn.icon-only {
+        width: 100%;
+        flex-basis: auto;
+      }
+
+      .url-watermark {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <svg class="liquid-filter-bank" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id="fluid-glass-distortion" x="-18%" y="-18%" width="136%" height="136%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="9" result="noise"></feTurbulence>
+        <feGaussianBlur in="noise" stdDeviation="8" result="softNoise"></feGaussianBlur>
+        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="18" xChannelSelector="R" yChannelSelector="G" result="refracted"></feDisplacementMap>
+        <feColorMatrix in="refracted" type="matrix" values="1.05 0 0 0 0  0 1.02 0 0 0  0 0 1.08 0 0  0 0 0 1 0" result="chromatic"></feColorMatrix>
+        <feGaussianBlur in="chromatic" stdDeviation="0.35"></feGaussianBlur>
+      </filter>
+    </defs>
+  </svg>
+
+  <div class="scene" aria-hidden="true"></div>
+
+  <main class="app-shell">
+    <header class="topbar liquid" data-liquid>
+      <div class="brand">
+        <span class="eyebrow">Glass Utility</span>
+        <h1>Basic Utility App</h1>
+        <p>파일 보안, URL, QR, 클립보드, 기본 앱 설정</p>
+      </div>
+      <div class="system-state liquid" data-liquid aria-live="polite">
+        <span class="state-dot"></span>
+        <span id="globalStatus">모든 도구가 준비됨</span>
+      </div>
+    </header>
+
+    <section class="utility-panel liquid" data-liquid aria-label="유틸리티 도구">
+      <div class="widget-grid">
+        <article class="widget liquid" data-liquid aria-labelledby="fileTitle">
+          <div class="widget-header">
+            <div class="icon-box orange">
+              <i data-lucide="lock-keyhole" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="fileTitle">파일 암호화</strong>
+              <span id="selectedFileName">선택된 파일 없음</span>
+            </div>
+          </div>
+
+          <input class="hidden-input" id="fileInput" type="file">
+          <div class="drop-zone" id="dropZone" tabindex="0">
+            파일을 놓거나 선택하세요
+          </div>
+
+          <div class="input-stack">
+            <input class="ios-input" id="filePassword" type="password" autocomplete="new-password" placeholder="비밀번호">
+            <div class="segmented" data-segment-group="fileMode" role="tablist" aria-label="파일 처리 방식">
+              <button class="segment active" type="button" data-value="encrypt">암호화</button>
+              <button class="segment" type="button" data-value="decrypt">복호화</button>
+            </div>
+          </div>
+
+          <p class="status" id="fileStatus" aria-live="polite">AES-GCM 방식으로 브라우저 안에서 처리됩니다.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="chooseFileBtn" type="button">
+              <i data-lucide="folder-search" stroke-width="2" width="16" height="16"></i>
+              파일 선택
+            </button>
+            <button class="ios-btn primary" id="runFileBtn" type="button">
+              <i data-lucide="play" stroke-width="2" width="16" height="16"></i>
+              실행
+            </button>
+          </div>
+        </article>
+
+        <article class="widget liquid url-widget" data-liquid aria-labelledby="urlTitle">
+          <span class="url-watermark" aria-hidden="true">notoow</span>
+          <div class="widget-header">
+            <div class="icon-box blue">
+              <i data-lucide="link-2" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="urlTitle">URL 단축</strong>
+              <span>is.gd / TinyURL API</span>
+            </div>
+          </div>
+
+          <span class="watermark-chip">
+            <i data-lucide="sparkles" stroke-width="2" width="13" height="13"></i>
+            watermark notoow
+          </span>
+
+          <div class="input-stack">
+            <input class="ios-input" id="urlInput" type="url" placeholder="https://example.com/very/long/path">
+            <div class="control-row">
+              <input class="ios-input" id="shortUrlOutput" type="text" readonly placeholder="단축 URL">
+              <button class="ios-btn icon-only" id="copyShortUrlBtn" type="button" title="복사" aria-label="단축 URL 복사">
+                <i data-lucide="copy" stroke-width="2" width="18" height="18"></i>
+              </button>
+            </div>
+          </div>
+
+          <p class="status" id="urlStatus" aria-live="polite">URL을 입력하고 단축을 실행하세요.</p>
+          <div class="action-row">
+            <button class="ios-btn primary" id="shortenBtn" type="button">
+              <i data-lucide="zap" stroke-width="2" width="16" height="16"></i>
+              단축하기
+            </button>
+            <button class="ios-btn" id="openShortUrlBtn" type="button">
+              <i data-lucide="external-link" stroke-width="2" width="16" height="16"></i>
+              열기
+            </button>
+          </div>
+        </article>
+
+        <article class="widget liquid wide" data-liquid aria-labelledby="qrTitle">
+          <div class="widget-header">
+            <div class="icon-box green">
+              <i data-lucide="qr-code" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="qrTitle">QR 코드 생성</strong>
+              <span>PNG로 저장 가능</span>
+            </div>
+          </div>
+
+          <div class="qr-layout">
+            <div class="input-stack">
+              <input class="ios-input" id="qrInput" type="text" placeholder="텍스트 또는 URL" value="https://example.com">
+              <div class="segmented" data-segment-group="qrTheme" role="tablist" aria-label="QR 색상">
+                <button class="segment active" type="button" data-value="black">기본</button>
+                <button class="segment" type="button" data-value="green">녹색</button>
+                <button class="segment" type="button" data-value="blue">청색</button>
+                <button class="segment" type="button" data-value="invert">반전</button>
+              </div>
+              <p class="status" id="qrStatus" aria-live="polite">QR 코드가 준비됨</p>
+              <div class="action-row">
+                <button class="ios-btn primary" id="downloadQrBtn" type="button">
+                  <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
+                  이미지 저장
+                </button>
+              </div>
+            </div>
+            <div class="qr-box">
+              <canvas id="qrCanvas" width="164" height="164" aria-label="생성된 QR 코드"></canvas>
+            </div>
+          </div>
+        </article>
+
+        <article class="widget liquid" data-liquid aria-labelledby="clipboardTitle">
+          <div class="widget-header">
+            <div class="icon-box purple">
+              <i data-lucide="clipboard-paste" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="clipboardTitle">클립보드 이미지 저장</strong>
+              <span id="folderState">다운로드 폴더 사용</span>
+            </div>
+          </div>
+
+          <div class="paste-zone" id="pasteZone" tabindex="0">
+            이미지를 붙여넣으세요
+          </div>
+          <div class="preview-box" id="previewBox">
+            <span class="preview-empty">미리보기 없음</span>
+            <img id="clipboardPreview" alt="붙여넣은 이미지 미리보기">
+          </div>
+
+          <p class="status" id="clipboardStatus" aria-live="polite">이미지 데이터가 감지되면 PNG로 변환됩니다.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="chooseFolderBtn" type="button">
+              <i data-lucide="folder-open" stroke-width="2" width="16" height="16"></i>
+              폴더 선택
+            </button>
+            <button class="ios-btn primary" id="saveClipboardBtn" type="button">
+              <i data-lucide="save" stroke-width="2" width="16" height="16"></i>
+              저장
+            </button>
+          </div>
+        </article>
+
+        <article class="widget liquid" data-liquid aria-labelledby="settingsTitle">
+          <div class="widget-header">
+            <div class="icon-box slate">
+              <i data-lucide="settings-2" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="settingsTitle">기본 앱 설정</strong>
+              <span>브라우저와 Windows 설정</span>
+            </div>
+          </div>
+
+          <div class="input-stack">
+            <button class="ios-btn primary" id="chromeSettingsBtn" type="button">
+              <i data-lucide="globe" stroke-width="2" width="16" height="16"></i>
+              Chrome 설정
+            </button>
+            <button class="ios-btn" id="windowsSettingsBtn" type="button">
+              <i data-lucide="monitor-cog" stroke-width="2" width="16" height="16"></i>
+              Windows 설정
+            </button>
+          </div>
+
+          <p class="status" id="settingsStatus" aria-live="polite">설정 버튼을 누르면 해당 시스템 화면을 엽니다.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="resetAppBtn" type="button">
+              <i data-lucide="rotate-ccw" stroke-width="2" width="16" height="16"></i>
+              입력 초기화
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="footer liquid" data-liquid>
+      <span>Contact</span>
+      <div class="footer-links">
+        <a href="mailto:antcow0706@gmail.com">
+          <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
+          antcow0706@gmail.com
+        </a>
+        <a href="https://vietls.com" target="_blank" rel="noopener noreferrer">
+          <i data-lucide="globe-2" stroke-width="2" width="14" height="14"></i>
+          vietls.com
+        </a>
+        <a href="https://buymeacoffee.com/notoow" target="_blank" rel="noopener noreferrer">
+          <i data-lucide="coffee" stroke-width="2" width="14" height="14"></i>
+          buymeacoffee.com/notoow
+        </a>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    const app = {
+      selectedFile: null,
+      fileMode: "encrypt",
+      qrTheme: "black",
+      qr: null,
+      clipboardBlob: null,
+      clipboardUrl: null,
+      directoryHandle: null
+    };
+
+    const $ = (selector) => document.querySelector(selector);
+
+    const els = {
+      globalStatus: $("#globalStatus"),
+      fileInput: $("#fileInput"),
+      chooseFileBtn: $("#chooseFileBtn"),
+      runFileBtn: $("#runFileBtn"),
+      dropZone: $("#dropZone"),
+      selectedFileName: $("#selectedFileName"),
+      filePassword: $("#filePassword"),
+      fileStatus: $("#fileStatus"),
+      urlInput: $("#urlInput"),
+      shortUrlOutput: $("#shortUrlOutput"),
+      shortenBtn: $("#shortenBtn"),
+      copyShortUrlBtn: $("#copyShortUrlBtn"),
+      openShortUrlBtn: $("#openShortUrlBtn"),
+      urlStatus: $("#urlStatus"),
+      qrInput: $("#qrInput"),
+      qrCanvas: $("#qrCanvas"),
+      qrStatus: $("#qrStatus"),
+      downloadQrBtn: $("#downloadQrBtn"),
+      pasteZone: $("#pasteZone"),
+      previewBox: $("#previewBox"),
+      clipboardPreview: $("#clipboardPreview"),
+      clipboardStatus: $("#clipboardStatus"),
+      chooseFolderBtn: $("#chooseFolderBtn"),
+      saveClipboardBtn: $("#saveClipboardBtn"),
+      folderState: $("#folderState"),
+      chromeSettingsBtn: $("#chromeSettingsBtn"),
+      windowsSettingsBtn: $("#windowsSettingsBtn"),
+      settingsStatus: $("#settingsStatus"),
+      resetAppBtn: $("#resetAppBtn")
+    };
+
+    function setStatus(element, message, type = "") {
+      element.textContent = message;
+      element.className = `status${type ? ` ${type}` : ""}`;
+      els.globalStatus.textContent = message;
+    }
+
+    function setBusy(button, busy, labelWhenBusy = "처리 중") {
+      if (!button.dataset.label) {
+        button.dataset.label = button.innerHTML;
+      }
+      button.disabled = busy;
+      button.innerHTML = busy ? labelWhenBusy : button.dataset.label;
+      if (!busy && window.lucide) {
+        lucide.createIcons();
+      }
+    }
+
+    function bytesToBase64(bytes) {
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      return btoa(binary);
+    }
+
+    function base64ToBytes(base64) {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1200);
+    }
+
+    async function copyText(text) {
+      if (!text) {
+        throw new Error("복사할 내용이 없습니다.");
+      }
+
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+
+    function normalizeUrl(value) {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        throw new Error("URL을 입력하세요.");
+      }
+      const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+      if (!["http:", "https:"].includes(url.protocol)) {
+        throw new Error("http 또는 https URL만 지원합니다.");
+      }
+      return url.href;
+    }
+
+    async function deriveKey(password, salt) {
+      const encoder = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(password),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+      );
+
+      return crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt, iterations: 160000, hash: "SHA-256" },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+      );
+    }
+
+    function selectFile(file) {
+      app.selectedFile = file;
+      els.selectedFileName.textContent = file ? file.name : "선택된 파일 없음";
+      els.dropZone.textContent = file ? `${file.name} (${Math.ceil(file.size / 1024)} KB)` : "파일을 놓거나 선택하세요";
+      setStatus(els.fileStatus, file ? "파일이 준비됨" : "파일을 선택하세요.", file ? "ok" : "");
+    }
+
+    async function runFileTool() {
+      if (!window.crypto || !crypto.subtle) {
+        setStatus(els.fileStatus, "이 브라우저는 WebCrypto를 지원하지 않습니다.", "error");
+        return;
+      }
+      if (!app.selectedFile) {
+        setStatus(els.fileStatus, "먼저 파일을 선택하세요.", "warn");
+        return;
+      }
+      const password = els.filePassword.value;
+      if (password.length < 4) {
+        setStatus(els.fileStatus, "비밀번호는 4자 이상 입력하세요.", "warn");
+        return;
+      }
+
+      setBusy(els.runFileBtn, true);
+      try {
+        if (app.fileMode === "encrypt") {
+          const salt = crypto.getRandomValues(new Uint8Array(16));
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const key = await deriveKey(password, salt);
+          const plainBuffer = await app.selectedFile.arrayBuffer();
+          const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plainBuffer);
+          const payload = {
+            magic: "WTNENC1",
+            name: app.selectedFile.name,
+            type: app.selectedFile.type || "application/octet-stream",
+            salt: bytesToBase64(salt),
+            iv: bytesToBase64(iv),
+            data: bytesToBase64(new Uint8Array(encrypted))
+          };
+          const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+          downloadBlob(blob, `${app.selectedFile.name}.wtnenc`);
+          setStatus(els.fileStatus, "암호화 파일을 저장했습니다.", "ok");
+        } else {
+          const text = await app.selectedFile.text();
+          const payload = JSON.parse(text);
+          if (payload.magic !== "WTNENC1") {
+            throw new Error("지원하지 않는 암호화 파일입니다.");
+          }
+          const salt = base64ToBytes(payload.salt);
+          const iv = base64ToBytes(payload.iv);
+          const data = base64ToBytes(payload.data);
+          const key = await deriveKey(password, salt);
+          const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+          const blob = new Blob([decrypted], { type: payload.type || "application/octet-stream" });
+          downloadBlob(blob, payload.name || app.selectedFile.name.replace(/\.wtnenc$/i, ""));
+          setStatus(els.fileStatus, "복호화 파일을 저장했습니다.", "ok");
+        }
+      } catch (error) {
+        setStatus(els.fileStatus, error.message || "파일 처리에 실패했습니다.", "error");
+      } finally {
+        setBusy(els.runFileBtn, false);
+      }
+    }
+
+    async function shortenUrl() {
+      let normalized;
+      try {
+        normalized = normalizeUrl(els.urlInput.value);
+      } catch (error) {
+        setStatus(els.urlStatus, error.message, "warn");
+        return;
+      }
+
+      setBusy(els.shortenBtn, true);
+      const endpoints = [
+        `https://is.gd/create.php?format=simple&url=${encodeURIComponent(normalized)}`,
+        `https://tinyurl.com/api-create.php?url=${encodeURIComponent(normalized)}`
+      ];
+
+      try {
+        let shortUrl = "";
+        let lastError = null;
+        for (const endpoint of endpoints) {
+          try {
+            const response = await fetch(endpoint, { cache: "no-store" });
+            const text = (await response.text()).trim();
+            if (!response.ok || !/^https?:\/\//i.test(text)) {
+              throw new Error(text || "단축 API 응답이 올바르지 않습니다.");
+            }
+            shortUrl = text;
+            break;
+          } catch (error) {
+            lastError = error;
+          }
+        }
+
+        if (!shortUrl) {
+          throw lastError || new Error("URL 단축에 실패했습니다.");
+        }
+
+        els.shortUrlOutput.value = shortUrl;
+        await copyText(shortUrl).catch(() => {});
+        setStatus(els.urlStatus, "단축 URL을 만들었습니다. notoow 워터마크가 표시됩니다.", "ok");
+      } catch (error) {
+        setStatus(els.urlStatus, error.message || "URL 단축 서비스에 연결할 수 없습니다.", "error");
+      } finally {
+        setBusy(els.shortenBtn, false);
+      }
+    }
+
+    function getQrTheme() {
+      const themes = {
+        black: { foreground: "#111111", background: "#ffffff" },
+        green: { foreground: "#0d7f62", background: "#f7fff9" },
+        blue: { foreground: "#1558d6", background: "#f7fbff" },
+        invert: { foreground: "#ffffff", background: "#101217" }
+      };
+      return themes[app.qrTheme] || themes.black;
+    }
+
+    async function updateQr() {
+      const value = els.qrInput.value.trim() || " ";
+      if (!window.qrcode) {
+        setStatus(els.qrStatus, "QR 라이브러리를 불러오지 못했습니다.", "error");
+        return;
+      }
+      const theme = getQrTheme();
+      try {
+        const qr = window.qrcode(0, "H");
+        qr.addData(value);
+        qr.make();
+        const context = els.qrCanvas.getContext("2d");
+        const size = els.qrCanvas.width;
+        const moduleCount = qr.getModuleCount();
+        const margin = 8;
+        const cellSize = (size - margin * 2) / moduleCount;
+
+        context.fillStyle = theme.background;
+        context.fillRect(0, 0, size, size);
+        context.fillStyle = theme.foreground;
+        for (let row = 0; row < moduleCount; row += 1) {
+          for (let col = 0; col < moduleCount; col += 1) {
+            if (qr.isDark(row, col)) {
+              context.fillRect(
+                Math.round(margin + col * cellSize),
+                Math.round(margin + row * cellSize),
+                Math.ceil(cellSize),
+                Math.ceil(cellSize)
+              );
+            }
+          }
+        }
+      } catch (error) {
+        setStatus(els.qrStatus, error.message || "QR 코드 생성에 실패했습니다.", "error");
+        return;
+      }
+      setStatus(els.qrStatus, value.trim() ? "QR 코드가 갱신됨" : "텍스트를 입력하세요.", value.trim() ? "ok" : "warn");
+    }
+
+    async function downloadQr() {
+      await updateQr();
+      els.qrCanvas.toBlob((blob) => {
+        if (!blob) {
+          setStatus(els.qrStatus, "QR 이미지 생성에 실패했습니다.", "error");
+          return;
+        }
+        downloadBlob(blob, `qr-${Date.now()}.png`);
+        setStatus(els.qrStatus, "QR 이미지를 저장했습니다.", "ok");
+      }, "image/png");
+    }
+
+    async function blobToPng(blob) {
+      if (blob.type === "image/png") {
+        return blob;
+      }
+      if (!window.createImageBitmap) {
+        return blob;
+      }
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const context = canvas.getContext("2d");
+      context.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((pngBlob) => {
+          if (pngBlob) {
+            resolve(pngBlob);
+          } else {
+            reject(new Error("PNG 변환에 실패했습니다."));
+          }
+        }, "image/png");
+      });
+    }
+
+    async function handlePaste(event) {
+      const items = Array.from(event.clipboardData?.items || []);
+      const imageItem = items.find((item) => item.type.startsWith("image/"));
+      if (!imageItem) {
+        setStatus(els.clipboardStatus, "클립보드에서 이미지를 찾지 못했습니다.", "warn");
+        return;
+      }
+
+      event.preventDefault();
+      try {
+        const file = imageItem.getAsFile();
+        app.clipboardBlob = await blobToPng(file);
+        if (app.clipboardUrl) {
+          URL.revokeObjectURL(app.clipboardUrl);
+        }
+        app.clipboardUrl = URL.createObjectURL(app.clipboardBlob);
+        els.clipboardPreview.src = app.clipboardUrl;
+        els.previewBox.classList.add("has-image");
+        setStatus(els.clipboardStatus, "이미지가 준비됨", "ok");
+      } catch (error) {
+        setStatus(els.clipboardStatus, error.message || "이미지를 읽지 못했습니다.", "error");
+      }
+    }
+
+    async function chooseFolder() {
+      if (!window.showDirectoryPicker) {
+        setStatus(els.clipboardStatus, "이 브라우저는 폴더 직접 저장을 지원하지 않습니다.", "warn");
+        return;
+      }
+      try {
+        app.directoryHandle = await window.showDirectoryPicker();
+        els.folderState.textContent = app.directoryHandle.name;
+        setStatus(els.clipboardStatus, "저장 폴더가 선택됨", "ok");
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          setStatus(els.clipboardStatus, "폴더 선택에 실패했습니다.", "error");
+        }
+      }
+    }
+
+    async function saveClipboardImage() {
+      if (!app.clipboardBlob) {
+        setStatus(els.clipboardStatus, "먼저 이미지를 붙여넣으세요.", "warn");
+        els.pasteZone.focus();
+        return;
+      }
+
+      const extension = app.clipboardBlob.type === "image/jpeg" ? "jpg" : "png";
+      const filename = `clipboard-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`;
+      try {
+        if (app.directoryHandle) {
+          const handle = await app.directoryHandle.getFileHandle(filename, { create: true });
+          const writable = await handle.createWritable();
+          await writable.write(app.clipboardBlob);
+          await writable.close();
+        } else {
+          downloadBlob(app.clipboardBlob, filename);
+        }
+        setStatus(els.clipboardStatus, "이미지를 저장했습니다.", "ok");
+      } catch (error) {
+        setStatus(els.clipboardStatus, error.message || "이미지 저장에 실패했습니다.", "error");
+      }
+    }
+
+    function openChromeSettings() {
+      const opened = window.open("chrome://settings/defaultBrowser", "_blank", "noopener,noreferrer");
+      setStatus(
+        els.settingsStatus,
+        opened ? "Chrome 기본 브라우저 설정을 열었습니다." : "팝업 차단으로 Chrome 설정을 열지 못했습니다.",
+        opened ? "ok" : "warn"
+      );
+    }
+
+    function openWindowsSettings() {
+      const link = document.createElement("a");
+      link.href = "ms-settings:defaultapps";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setStatus(els.settingsStatus, "Windows 기본 앱 설정을 호출했습니다.", "ok");
+    }
+
+    function resetApp() {
+      els.fileInput.value = "";
+      els.filePassword.value = "";
+      els.urlInput.value = "";
+      els.shortUrlOutput.value = "";
+      els.qrInput.value = "https://example.com";
+      selectFile(null);
+      app.clipboardBlob = null;
+      if (app.clipboardUrl) {
+        URL.revokeObjectURL(app.clipboardUrl);
+        app.clipboardUrl = null;
+      }
+      els.clipboardPreview.removeAttribute("src");
+      els.previewBox.classList.remove("has-image");
+      updateQr();
+      setStatus(els.settingsStatus, "입력을 초기화했습니다.", "ok");
+    }
+
+    function activateSegment(button) {
+      const group = button.closest("[data-segment-group]");
+      const groupName = group.dataset.segmentGroup;
+      group.querySelectorAll(".segment").forEach((segment) => {
+        segment.classList.toggle("active", segment === button);
+      });
+
+      if (groupName === "fileMode") {
+        app.fileMode = button.dataset.value;
+        $("#fileTitle").textContent = app.fileMode === "encrypt" ? "파일 암호화" : "파일 복호화";
+        setStatus(els.fileStatus, app.fileMode === "encrypt" ? "암호화 모드" : "복호화 모드", "ok");
+      }
+
+      if (groupName === "qrTheme") {
+        app.qrTheme = button.dataset.value;
+        updateQr();
+      }
+    }
+
+    function syncLiquidPointer(event) {
+      const nodes = document.querySelectorAll("[data-liquid]");
+      nodes.forEach((node) => {
+        const rect = node.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width) * 100;
+        const y = ((event.clientY - rect.top) / rect.height) * 100;
+        node.style.setProperty("--mx", `${Math.max(0, Math.min(100, x))}%`);
+        node.style.setProperty("--my", `${Math.max(0, Math.min(100, y))}%`);
+      });
+    }
+
+    function bindEvents() {
+      els.chooseFileBtn.addEventListener("click", () => els.fileInput.click());
+      els.fileInput.addEventListener("change", () => selectFile(els.fileInput.files[0] || null));
+      els.runFileBtn.addEventListener("click", runFileTool);
+
+      ["dragenter", "dragover"].forEach((eventName) => {
+        els.dropZone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          els.dropZone.classList.add("active");
+        });
+      });
+      ["dragleave", "drop"].forEach((eventName) => {
+        els.dropZone.addEventListener(eventName, () => els.dropZone.classList.remove("active"));
+      });
+      els.dropZone.addEventListener("click", () => els.fileInput.click());
+      els.dropZone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          els.fileInput.click();
+        }
+      });
+      els.dropZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        selectFile(event.dataTransfer.files[0] || null);
+      });
+
+      document.querySelectorAll(".segment").forEach((button) => {
+        button.addEventListener("click", () => activateSegment(button));
+      });
+
+      els.shortenBtn.addEventListener("click", shortenUrl);
+      els.urlInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          shortenUrl();
+        }
+      });
+      els.copyShortUrlBtn.addEventListener("click", async () => {
+        try {
+          await copyText(els.shortUrlOutput.value);
+          setStatus(els.urlStatus, "단축 URL을 복사했습니다.", "ok");
+        } catch (error) {
+          setStatus(els.urlStatus, error.message, "warn");
+        }
+      });
+      els.openShortUrlBtn.addEventListener("click", () => {
+        if (!els.shortUrlOutput.value) {
+          setStatus(els.urlStatus, "먼저 URL을 단축하세요.", "warn");
+          return;
+        }
+        window.open(els.shortUrlOutput.value, "_blank", "noopener,noreferrer");
+      });
+
+      els.qrInput.addEventListener("input", updateQr);
+      els.downloadQrBtn.addEventListener("click", downloadQr);
+
+      els.pasteZone.addEventListener("paste", handlePaste);
+      document.addEventListener("paste", (event) => {
+        if (document.activeElement === els.pasteZone || document.activeElement === document.body) {
+          handlePaste(event);
+        }
+      });
+      els.pasteZone.addEventListener("click", () => els.pasteZone.focus());
+      els.chooseFolderBtn.addEventListener("click", chooseFolder);
+      els.saveClipboardBtn.addEventListener("click", saveClipboardImage);
+
+      els.chromeSettingsBtn.addEventListener("click", openChromeSettings);
+      els.windowsSettingsBtn.addEventListener("click", openWindowsSettings);
+      els.resetAppBtn.addEventListener("click", resetApp);
+      document.addEventListener("pointermove", syncLiquidPointer, { passive: true });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      bindEvents();
+      updateQr();
+      els.globalStatus.textContent = "모든 도구가 준비됨";
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    });
+  </script>
+</body>
+</html>
