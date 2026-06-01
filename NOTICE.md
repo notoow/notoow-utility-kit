@@ -14,6 +14,12 @@ This project is released under the MIT License. It also uses the following third
 - License: MIT License
 - Use: QR code generation
 
+## PDF.js
+
+- Project: https://github.com/mozilla/pdf.js
+- License: Apache License 2.0
+- Use: PDF page rendering for PNG conversion
+
 ## Archivo
 
 - Project: https://fonts.google.com/specimen/Archivo
