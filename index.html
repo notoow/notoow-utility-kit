@@ -341,6 +341,91 @@
       gap: 10px;
     }
 
+    .setting-row {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.035)),
+        rgba(4, 6, 10, 0.28);
+      padding: 10px 12px;
+    }
+
+    .setting-label {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 720;
+      line-height: 1.25;
+    }
+
+    .setting-label span {
+      color: var(--quiet);
+      font-size: 12px;
+      font-weight: 560;
+    }
+
+    .switch {
+      position: relative;
+      width: 48px;
+      height: 28px;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .switch input {
+      position: absolute;
+      opacity: 0;
+      inset: 0;
+      cursor: pointer;
+    }
+
+    .switch-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: rgba(4, 6, 10, 0.56);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow:
+        inset 0 1px 6px rgba(0, 0, 0, 0.32),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      transition: background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .switch-track::after {
+      content: "";
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      top: 2px;
+      left: 2px;
+      border-radius: 50%;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(220, 228, 236, 0.92));
+      box-shadow:
+        0 5px 10px rgba(0, 0, 0, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.75);
+      transition: transform 0.18s ease;
+    }
+
+    .switch input:checked + .switch-track {
+      background: rgba(71, 209, 140, 0.42);
+      border-color: rgba(148, 255, 196, 0.44);
+    }
+
+    .switch input:checked + .switch-track::after {
+      transform: translateX(20px);
+    }
+
     .control-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -477,6 +562,54 @@
       background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)),
         rgba(4, 6, 10, 0.28);
+    }
+
+    .file-details {
+      min-height: 42px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      background: rgba(4, 6, 10, 0.28);
+      color: var(--muted);
+      display: grid;
+      gap: 3px;
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .file-details strong {
+      color: rgba(247, 248, 251, 0.86);
+      font-size: 13px;
+      font-weight: 730;
+    }
+
+    .progress-wrap {
+      display: grid;
+      gap: 7px;
+    }
+
+    .progress-track {
+      height: 7px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(4, 6, 10, 0.52);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.36);
+    }
+
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background:
+        linear-gradient(90deg, rgba(71, 209, 140, 0.92), rgba(94, 199, 255, 0.92));
+      transition: width 0.24s ease;
+    }
+
+    .progress-label {
+      color: var(--quiet);
+      font-size: 12px;
+      min-height: 16px;
     }
 
     .action-row {
@@ -792,13 +925,25 @@
           <div class="drop-zone" id="dropZone" tabindex="0">
             파일을 놓거나 선택하세요
           </div>
+          <div class="file-details" id="fileDetails">
+            <strong>파일 정보</strong>
+            <span>선택한 파일의 형식과 처리 정보를 여기에 표시합니다.</span>
+          </div>
 
           <div class="input-stack">
             <input class="ios-input" id="filePassword" type="password" autocomplete="new-password" placeholder="비밀번호">
+            <input class="ios-input" id="fileConfirmPassword" type="password" autocomplete="new-password" placeholder="비밀번호 확인">
             <div class="segmented" data-segment-group="fileMode" role="tablist" aria-label="파일 처리 방식">
               <button class="segment active" type="button" data-value="encrypt">암호화</button>
               <button class="segment" type="button" data-value="decrypt">복호화</button>
             </div>
+          </div>
+
+          <div class="progress-wrap" aria-label="파일 처리 진행률">
+            <div class="progress-track">
+              <div class="progress-bar" id="fileProgress"></div>
+            </div>
+            <div class="progress-label" id="fileProgressLabel">대기 중</div>
           </div>
 
           <p class="status" id="fileStatus" aria-live="polite">AES-GCM 방식으로 브라우저 안에서 처리됩니다.</p>
@@ -940,9 +1085,29 @@
               <i data-lucide="monitor-cog" stroke-width="2" width="16" height="16"></i>
               Windows 설정
             </button>
+            <div class="setting-row">
+              <label class="setting-label" for="deleteReminderToggle">
+                원본 정리 알림
+                <span>작업 후 원본 파일 삭제 여부를 확인</span>
+              </label>
+              <label class="switch">
+                <input id="deleteReminderToggle" type="checkbox">
+                <span class="switch-track"></span>
+              </label>
+            </div>
+            <div class="setting-row">
+              <label class="setting-label" for="autoCopyToggle">
+                단축 URL 자동 복사
+                <span>생성된 링크를 클립보드에 저장</span>
+              </label>
+              <label class="switch">
+                <input id="autoCopyToggle" type="checkbox">
+                <span class="switch-track"></span>
+              </label>
+            </div>
           </div>
 
-          <p class="status" id="settingsStatus" aria-live="polite">설정 버튼을 누르면 해당 시스템 화면을 엽니다.</p>
+          <p class="status" id="settingsStatus" aria-live="polite">설정은 이 브라우저에 저장됩니다.</p>
           <div class="action-row">
             <button class="ios-btn" id="resetAppBtn" type="button">
               <i data-lucide="rotate-ccw" stroke-width="2" width="16" height="16"></i>
@@ -954,7 +1119,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>Contact</span>
+      <span>notoow Utility Kit v0.18</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -980,7 +1145,12 @@
       qr: null,
       clipboardBlob: null,
       clipboardUrl: null,
-      directoryHandle: null
+      directoryHandle: null,
+      settings: {
+        deleteReminder: true,
+        autoCopyShortUrl: true
+      },
+      version: "0.18"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -993,6 +1163,10 @@
       dropZone: $("#dropZone"),
       selectedFileName: $("#selectedFileName"),
       filePassword: $("#filePassword"),
+      fileConfirmPassword: $("#fileConfirmPassword"),
+      fileDetails: $("#fileDetails"),
+      fileProgress: $("#fileProgress"),
+      fileProgressLabel: $("#fileProgressLabel"),
       fileStatus: $("#fileStatus"),
       urlInput: $("#urlInput"),
       shortUrlOutput: $("#shortUrlOutput"),
@@ -1014,13 +1188,89 @@
       chromeSettingsBtn: $("#chromeSettingsBtn"),
       windowsSettingsBtn: $("#windowsSettingsBtn"),
       settingsStatus: $("#settingsStatus"),
-      resetAppBtn: $("#resetAppBtn")
+      resetAppBtn: $("#resetAppBtn"),
+      deleteReminderToggle: $("#deleteReminderToggle"),
+      autoCopyToggle: $("#autoCopyToggle")
     };
+
+    const SETTINGS_KEY = "notoow.utility.settings";
 
     function setStatus(element, message, type = "") {
       element.textContent = message;
       element.className = `status${type ? ` ${type}` : ""}`;
       els.globalStatus.textContent = message;
+    }
+
+    function loadSettings() {
+      try {
+        const saved = JSON.parse(window.localStorage?.getItem(SETTINGS_KEY) || "{}");
+        app.settings = { ...app.settings, ...saved };
+      } catch (error) {
+        app.settings = { deleteReminder: true, autoCopyShortUrl: true };
+      }
+      els.deleteReminderToggle.checked = Boolean(app.settings.deleteReminder);
+      els.autoCopyToggle.checked = Boolean(app.settings.autoCopyShortUrl);
+    }
+
+    function saveSettings() {
+      app.settings.deleteReminder = els.deleteReminderToggle.checked;
+      app.settings.autoCopyShortUrl = els.autoCopyToggle.checked;
+      try {
+        window.localStorage?.setItem(SETTINGS_KEY, JSON.stringify(app.settings));
+        setStatus(els.settingsStatus, "설정을 저장했습니다.", "ok");
+      } catch (error) {
+        setStatus(els.settingsStatus, "설정을 저장할 수 없어 현재 화면에서만 적용됩니다.", "warn");
+      }
+    }
+
+    function completionMessage(message) {
+      if (!app.settings.deleteReminder) {
+        return message;
+      }
+      return `${message} 원본 파일 보관/삭제 여부를 확인하세요.`;
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) {
+        return "-";
+      }
+      const units = ["B", "KB", "MB", "GB"];
+      let size = bytes;
+      let unit = 0;
+      while (size >= 1024 && unit < units.length - 1) {
+        size /= 1024;
+        unit += 1;
+      }
+      return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+    }
+
+    function setFileProgress(value, label) {
+      els.fileProgress.style.width = `${Math.max(0, Math.min(100, value))}%`;
+      els.fileProgressLabel.textContent = label;
+    }
+
+    async function digestBase64(bytes) {
+      const hash = await crypto.subtle.digest("SHA-256", bytes);
+      return bytesToBase64(new Uint8Array(hash));
+    }
+
+    function setFileDetails(title, lines) {
+      els.fileDetails.innerHTML = `<strong>${title}</strong>${lines.map((line) => `<span>${line}</span>`).join("")}`;
+    }
+
+    function setFileMode(mode, statusMessage = "") {
+      app.fileMode = mode;
+      document.querySelectorAll('[data-segment-group="fileMode"] .segment').forEach((segment) => {
+        segment.classList.toggle("active", segment.dataset.value === mode);
+      });
+      $("#fileTitle").textContent = mode === "encrypt" ? "파일 암호화" : "파일 복호화";
+      els.fileConfirmPassword.disabled = mode !== "encrypt";
+      if (mode !== "encrypt") {
+        els.fileConfirmPassword.value = "";
+      }
+      if (statusMessage) {
+        setStatus(els.fileStatus, statusMessage, "ok");
+      }
     }
 
     function setBusy(button, busy, labelWhenBusy = "처리 중") {
@@ -1115,11 +1365,44 @@
       );
     }
 
+    async function inspectSelectedFile(file) {
+      if (!file) {
+        setFileDetails("파일 정보", ["선택한 파일의 형식과 처리 정보를 여기에 표시합니다."]);
+        return;
+      }
+
+      const lines = [`크기: ${formatBytes(file.size)}`, `형식: ${file.type || "알 수 없음"}`];
+      if (/\.wtnenc$/i.test(file.name)) {
+        try {
+          const text = await file.text();
+          const payload = JSON.parse(text);
+          if (payload.magic === "WTNENC1") {
+            lines.unshift(`원본 이름: ${payload.name || "알 수 없음"}`);
+            lines.push(`버전: ${payload.version || "초기 형식"}`);
+            lines.push(`알고리즘: ${payload.algorithm || "AES-GCM"}`);
+            if (payload.createdAt) {
+              lines.push(`생성 시각: ${new Date(payload.createdAt).toLocaleString()}`);
+            }
+          }
+        } catch (error) {
+          lines.push("메타데이터를 읽을 수 없습니다.");
+        }
+      }
+      setFileDetails("파일 정보", lines);
+    }
+
     function selectFile(file) {
       app.selectedFile = file;
       els.selectedFileName.textContent = file ? file.name : "선택된 파일 없음";
       els.dropZone.textContent = file ? `${file.name} (${Math.ceil(file.size / 1024)} KB)` : "파일을 놓거나 선택하세요";
       setStatus(els.fileStatus, file ? "파일이 준비됨" : "파일을 선택하세요.", file ? "ok" : "");
+      setFileProgress(0, "대기 중");
+      inspectSelectedFile(file);
+      if (file && /\.wtnenc$/i.test(file.name)) {
+        setFileMode("decrypt", "암호화 파일을 감지해 복호화 모드로 전환했습니다.");
+      } else if (file && app.fileMode === "decrypt") {
+        setFileMode("encrypt", "일반 파일을 감지해 암호화 모드로 전환했습니다.");
+      }
     }
 
     async function runFileTool() {
@@ -1136,42 +1419,69 @@
         setStatus(els.fileStatus, "비밀번호는 4자 이상 입력하세요.", "warn");
         return;
       }
+      if (app.fileMode === "encrypt" && password !== els.fileConfirmPassword.value) {
+        setStatus(els.fileStatus, "비밀번호 확인이 일치하지 않습니다.", "warn");
+        return;
+      }
 
       setBusy(els.runFileBtn, true);
+      setFileProgress(8, "파일 읽는 중");
       try {
         if (app.fileMode === "encrypt") {
           const salt = crypto.getRandomValues(new Uint8Array(16));
           const iv = crypto.getRandomValues(new Uint8Array(12));
           const key = await deriveKey(password, salt);
+          setFileProgress(28, "키 준비 중");
           const plainBuffer = await app.selectedFile.arrayBuffer();
+          setFileProgress(48, "암호화 중");
           const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plainBuffer);
+          const encryptedBytes = new Uint8Array(encrypted);
+          const cipherHash = await digestBase64(encryptedBytes);
+          setFileProgress(78, "무결성 정보 작성 중");
           const payload = {
             magic: "WTNENC1",
+            version: app.version,
+            algorithm: "AES-GCM/PBKDF2-SHA-256",
+            createdAt: new Date().toISOString(),
             name: app.selectedFile.name,
             type: app.selectedFile.type || "application/octet-stream",
+            size: app.selectedFile.size,
             salt: bytesToBase64(salt),
             iv: bytesToBase64(iv),
-            data: bytesToBase64(new Uint8Array(encrypted))
+            cipherHash,
+            data: bytesToBase64(encryptedBytes)
           };
           const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
           downloadBlob(blob, `${app.selectedFile.name}.wtnenc`);
-          setStatus(els.fileStatus, "암호화 파일을 저장했습니다.", "ok");
+          setFileProgress(100, "완료");
+          setStatus(els.fileStatus, completionMessage("암호화 파일을 저장했습니다."), "ok");
         } else {
           const text = await app.selectedFile.text();
           const payload = JSON.parse(text);
           if (payload.magic !== "WTNENC1") {
             throw new Error("지원하지 않는 암호화 파일입니다.");
           }
+          setFileProgress(28, "메타데이터 확인 중");
           const salt = base64ToBytes(payload.salt);
           const iv = base64ToBytes(payload.iv);
           const data = base64ToBytes(payload.data);
+          if (payload.cipherHash) {
+            const cipherHash = await digestBase64(data);
+            if (cipherHash !== payload.cipherHash) {
+              throw new Error("파일 데이터가 손상되었거나 변경되었습니다.");
+            }
+          }
+          setFileProgress(52, "복호화 중");
           const key = await deriveKey(password, salt);
           const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+          setFileProgress(86, "파일 준비 중");
           const blob = new Blob([decrypted], { type: payload.type || "application/octet-stream" });
           downloadBlob(blob, payload.name || app.selectedFile.name.replace(/\.wtnenc$/i, ""));
-          setStatus(els.fileStatus, "복호화 파일을 저장했습니다.", "ok");
+          setFileProgress(100, "완료");
+          setStatus(els.fileStatus, completionMessage("복호화 파일을 저장했습니다."), "ok");
         }
       } catch (error) {
+        setFileProgress(0, "중단됨");
         setStatus(els.fileStatus, error.message || "파일 처리에 실패했습니다.", "error");
       } finally {
         setBusy(els.runFileBtn, false);
@@ -1215,8 +1525,16 @@
         }
 
         els.shortUrlOutput.value = shortUrl;
-        await copyText(shortUrl).catch(() => {});
-        setStatus(els.urlStatus, "단축 URL을 만들었습니다. notoow 워터마크가 표시됩니다.", "ok");
+        if (app.settings.autoCopyShortUrl) {
+          try {
+            await copyText(shortUrl);
+            setStatus(els.urlStatus, "단축 URL을 만들고 클립보드에 복사했습니다. notoow 워터마크가 표시됩니다.", "ok");
+          } catch (error) {
+            setStatus(els.urlStatus, "단축 URL을 만들었습니다. 브라우저 권한 때문에 자동 복사는 건너뛰었습니다.", "warn");
+          }
+        } else {
+          setStatus(els.urlStatus, "단축 URL을 만들었습니다. notoow 워터마크가 표시됩니다.", "ok");
+        }
       } catch (error) {
         setStatus(els.urlStatus, error.message || "URL 단축 서비스에 연결할 수 없습니다.", "error");
       } finally {
@@ -1396,6 +1714,8 @@
     function resetApp() {
       els.fileInput.value = "";
       els.filePassword.value = "";
+      els.fileConfirmPassword.value = "";
+      setFileMode("encrypt");
       els.urlInput.value = "";
       els.shortUrlOutput.value = "";
       els.qrInput.value = "https://example.com";
@@ -1419,8 +1739,7 @@
       });
 
       if (groupName === "fileMode") {
-        app.fileMode = button.dataset.value;
-        $("#fileTitle").textContent = app.fileMode === "encrypt" ? "파일 암호화" : "파일 복호화";
+        setFileMode(button.dataset.value);
         setStatus(els.fileStatus, app.fileMode === "encrypt" ? "암호화 모드" : "복호화 모드", "ok");
       }
 
@@ -1509,11 +1828,15 @@
       els.chromeSettingsBtn.addEventListener("click", openChromeSettings);
       els.windowsSettingsBtn.addEventListener("click", openWindowsSettings);
       els.resetAppBtn.addEventListener("click", resetApp);
+      els.deleteReminderToggle.addEventListener("change", saveSettings);
+      els.autoCopyToggle.addEventListener("change", saveSettings);
       document.addEventListener("pointermove", syncLiquidPointer, { passive: true });
     }
 
     document.addEventListener("DOMContentLoaded", () => {
+      loadSettings();
       bindEvents();
+      setFileMode(app.fileMode);
       updateQr();
       els.globalStatus.textContent = "모든 도구가 준비됨";
       if (window.lucide) {

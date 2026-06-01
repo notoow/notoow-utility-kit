@@ -9,6 +9,9 @@ A single-file browser utility app with a polished translucent glass interface.
 - QR code generation with color themes and PNG export
 - Clipboard image paste, preview, and PNG/JPEG save
 - Quick links for browser and Windows default-app settings
+- Persistent local settings for cleanup reminders and URL copy behavior
+- Encrypted file metadata with version, algorithm, timestamp, original name, type, and size
+- File processing progress, encrypted data checksum validation, and automatic decrypt-mode detection
 - Footer contact links for `antcow0706@gmail.com`, `vietls.com`, and `buymeacoffee.com/notoow`
 
 ## Run Locally
