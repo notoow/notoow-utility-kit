@@ -7,7 +7,7 @@ A single-file browser utility app with a polished translucent glass interface.
 - File encryption and decryption in the browser with AES-GCM
 - URL shortening with copy/open actions and a `vietls` watermark
 - QR code generation with color themes, an invert toggle, and PNG export
-- PNG conversion for SVG, JPG/JPEG, WebP, GIF, BMP, AVIF, and PDF files
+- Batch PNG conversion for SVG, JPG/JPEG, WebP, GIF, BMP, AVIF, and PDF files
 - Quick links for browser and Windows default-app settings
 - Persistent local settings for cleanup reminders and URL copy behavior
 - Encrypted file metadata with version, algorithm, timestamp, original name, type, and size

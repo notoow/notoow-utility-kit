@@ -564,6 +564,151 @@
         rgba(4, 6, 10, 0.28);
     }
 
+    .converter-zone {
+      min-height: 176px;
+      place-items: stretch;
+      align-content: start;
+      gap: 10px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .converter-drop-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: rgba(247, 248, 251, 0.86);
+    }
+
+    .converter-drop-head strong {
+      display: block;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .converter-drop-head span {
+      display: block;
+      margin-top: 2px;
+      color: var(--quiet);
+      font-size: 12px;
+    }
+
+    .converter-file-list {
+      display: grid;
+      gap: 7px;
+      max-height: 132px;
+      overflow-y: auto;
+      padding-right: 3px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.34) transparent;
+    }
+
+    .converter-file-list:empty {
+      display: none;
+    }
+
+    .converter-file-row {
+      min-height: 42px;
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 13px;
+      background: rgba(4, 6, 10, 0.28);
+      color: inherit;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .converter-file-row.active {
+      border-color: rgba(94, 199, 255, 0.48);
+      background: rgba(94, 199, 255, 0.12);
+    }
+
+    .converter-file-name,
+    .converter-file-meta {
+      display: block;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .converter-file-text {
+      min-width: 0;
+    }
+
+    .converter-file-name {
+      color: rgba(247, 248, 251, 0.9);
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    .converter-file-meta {
+      color: var(--quiet);
+      font-size: 11px;
+      margin-top: 2px;
+    }
+
+    .converter-file-state {
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+      white-space: nowrap;
+    }
+
+    .converter-file-row.done .converter-file-state { color: var(--ok); }
+    .converter-file-row.busy .converter-file-state { color: var(--blue); }
+    .converter-file-row.error .converter-file-state { color: var(--danger); }
+
+    .converter-activity {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(4, 6, 10, 0.26);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .converter-spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: rgba(255, 255, 255, 0.82);
+      opacity: 0;
+    }
+
+    .converter-activity.is-busy .converter-spinner {
+      opacity: 1;
+      animation: spin 0.82s linear infinite;
+    }
+
+    .converter-activity.is-done {
+      color: var(--ok);
+    }
+
+    .converter-activity.is-error {
+      color: var(--danger);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     .file-details {
       min-height: 42px;
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1053,20 +1198,20 @@
             </div>
           </div>
 
-          <input class="hidden-input" id="converterInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,application/pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg,.pdf">
-          <div class="paste-zone" id="converterZone" tabindex="0">
-            SVG, JPG, PDF 등을 놓거나 선택하세요
+          <input class="hidden-input" id="converterInput" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,application/pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg,.pdf">
+          <div class="paste-zone converter-zone" id="converterZone" tabindex="0">
+            <div class="converter-drop-head">
+              <div>
+                <strong>파일을 놓거나 선택</strong>
+                <span>SVG JPG WEBP PDF</span>
+              </div>
+              <i data-lucide="upload-cloud" stroke-width="2" width="20" height="20"></i>
+            </div>
+            <div class="converter-file-list" id="converterFileList" aria-live="polite"></div>
           </div>
-          <div class="file-details" id="converterDetails">
-            <strong>변환 대기</strong>
-            <span>이미지 파일이나 PDF를 PNG로 변환합니다.</span>
-          </div>
-          <div class="control-row">
-            <input class="ios-input" id="pdfPageInput" type="number" min="1" value="1" inputmode="numeric" aria-label="PDF 페이지">
-            <button class="ios-btn" id="convertPngBtn" type="button">
-              <i data-lucide="refresh-cw" stroke-width="2" width="16" height="16"></i>
-              변환
-            </button>
+          <div class="converter-activity" id="converterActivity" aria-live="polite">
+            <span class="converter-spinner" aria-hidden="true"></span>
+            <span id="converterActivityText">대기 중</span>
           </div>
           <div class="preview-box" id="previewBox">
             <span class="preview-empty">미리보기 없음</span>
@@ -1144,7 +1289,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.20</span>
+      <span>notoow Utility Kit v0.21</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1169,17 +1314,16 @@
       qrTheme: "black",
       qrInvert: false,
       qr: null,
-      converterFile: null,
-      convertedBlob: null,
-      convertedUrl: null,
-      convertedName: "",
+      converterItems: [],
+      activeConverterId: null,
+      converterRunId: 0,
       pdfjs: null,
       directoryHandle: null,
       settings: {
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.20"
+      version: "0.21"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1210,9 +1354,9 @@
       qrInvertToggle: $("#qrInvertToggle"),
       converterInput: $("#converterInput"),
       converterZone: $("#converterZone"),
-      converterDetails: $("#converterDetails"),
-      pdfPageInput: $("#pdfPageInput"),
-      convertPngBtn: $("#convertPngBtn"),
+      converterFileList: $("#converterFileList"),
+      converterActivity: $("#converterActivity"),
+      converterActivityText: $("#converterActivityText"),
       previewBox: $("#previewBox"),
       converterPreview: $("#converterPreview"),
       converterStatus: $("#converterStatus"),
@@ -1668,18 +1812,6 @@
       "application/pdf"
     ]);
 
-    function setConverterDetails(title, lines) {
-      els.converterDetails.replaceChildren();
-      const strong = document.createElement("strong");
-      strong.textContent = title;
-      els.converterDetails.appendChild(strong);
-      lines.forEach((line) => {
-        const span = document.createElement("span");
-        span.textContent = line;
-        els.converterDetails.appendChild(span);
-      });
-    }
-
     function converterExtension(file) {
       return (file.name.split(".").pop() || "").toLowerCase();
     }
@@ -1697,15 +1829,110 @@
       return name.replace(/\.[^.]+$/, "").replace(/[<>:"/\\|?*\x00-\x1f]/g, "-").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "converted";
     }
 
-    function clearConvertedPng() {
-      app.convertedBlob = null;
-      app.convertedName = "";
-      if (app.convertedUrl) {
-        URL.revokeObjectURL(app.convertedUrl);
-        app.convertedUrl = null;
+    function uniqueOutputName(baseName, usedNames) {
+      const cleanName = baseName || "converted.png";
+      const dot = cleanName.lastIndexOf(".");
+      const stem = dot > 0 ? cleanName.slice(0, dot) : cleanName;
+      const extension = dot > 0 ? cleanName.slice(dot) : ".png";
+      let candidate = `${stem}${extension}`;
+      let index = 2;
+      while (usedNames.has(candidate.toLowerCase())) {
+        candidate = `${stem}-${index}${extension}`;
+        index += 1;
       }
+      usedNames.add(candidate.toLowerCase());
+      return candidate;
+    }
+
+    function converterFileMeta(file) {
+      const extension = converterExtension(file);
+      return `${extension ? extension.toUpperCase() : "FILE"} · ${formatBytes(file.size)}`;
+    }
+
+    function converterStateLabel(status) {
+      return {
+        queued: "대기",
+        busy: "변환중",
+        done: "완료",
+        error: "오류"
+      }[status] || "대기";
+    }
+
+    function clearConverterPreview() {
       els.converterPreview.removeAttribute("src");
       els.previewBox.classList.remove("has-image");
+    }
+
+    function revokeConverterUrls(items = app.converterItems) {
+      items.forEach((item) => {
+        if (item.url) {
+          URL.revokeObjectURL(item.url);
+          item.url = "";
+        }
+      });
+    }
+
+    function setConverterActivity(state, text) {
+      els.converterActivity.className = `converter-activity${state ? ` is-${state}` : ""}`;
+      els.converterActivityText.textContent = text;
+    }
+
+    function getActiveConverterItem() {
+      return app.converterItems.find((item) => item.id === app.activeConverterId) || null;
+    }
+
+    function updateConverterPreview() {
+      const item = getActiveConverterItem() || app.converterItems.find((entry) => entry.url);
+      if (!item?.url) {
+        clearConverterPreview();
+        return;
+      }
+      app.activeConverterId = item.id;
+      els.converterPreview.src = item.url;
+      els.previewBox.classList.add("has-image");
+    }
+
+    function renderConverterList() {
+      els.converterFileList.replaceChildren();
+      app.converterItems.forEach((item) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = `converter-file-row ${item.status}${item.id === app.activeConverterId ? " active" : ""}`;
+        row.dataset.id = item.id;
+
+        const textWrap = document.createElement("span");
+        textWrap.className = "converter-file-text";
+        const name = document.createElement("span");
+        name.className = "converter-file-name";
+        name.textContent = item.file.name;
+        const meta = document.createElement("span");
+        meta.className = "converter-file-meta";
+        meta.textContent = item.status === "error" ? item.error : (item.outputName || converterFileMeta(item.file));
+        textWrap.append(name, meta);
+
+        const state = document.createElement("span");
+        state.className = "converter-file-state";
+        state.textContent = converterStateLabel(item.status);
+
+        row.append(textWrap, state);
+        row.addEventListener("click", () => {
+          app.activeConverterId = item.id;
+          updateConverterPreview();
+          renderConverterList();
+        });
+        els.converterFileList.appendChild(row);
+      });
+    }
+
+    function resetConverterState() {
+      app.converterRunId += 1;
+      revokeConverterUrls();
+      app.converterItems = [];
+      app.activeConverterId = null;
+      els.converterInput.value = "";
+      renderConverterList();
+      clearConverterPreview();
+      setConverterActivity("", "대기 중");
     }
 
     function canvasToPngBlob(canvas) {
@@ -1773,10 +2000,7 @@
       const bytes = new Uint8Array(await file.arrayBuffer());
       const pdf = await pdfjs.getDocument({ data: bytes }).promise;
       const pageCount = pdf.numPages;
-      const requestedPage = Number.parseInt(els.pdfPageInput.value, 10) || 1;
-      const pageNumber = Math.max(1, Math.min(pageCount, requestedPage));
-      els.pdfPageInput.max = String(pageCount);
-      els.pdfPageInput.value = String(pageNumber);
+      const pageNumber = 1;
 
       const page = await pdf.getPage(pageNumber);
       const baseViewport = page.getViewport({ scale: 1 });
@@ -1799,79 +2023,110 @@
       };
     }
 
-    function setConvertedPng(result, file) {
-      clearConvertedPng();
-      app.convertedBlob = result.blob;
-      app.convertedUrl = URL.createObjectURL(result.blob);
+    function setConvertedItem(item, result, usedNames) {
+      if (item.url) {
+        URL.revokeObjectURL(item.url);
+      }
+      item.blob = result.blob;
+      item.url = URL.createObjectURL(result.blob);
       const pageSuffix = result.pageNumber ? `-page-${String(result.pageNumber).padStart(2, "0")}` : "";
-      app.convertedName = `${sanitizeFilename(file.name)}${pageSuffix}.png`;
-      els.converterPreview.src = app.convertedUrl;
-      els.previewBox.classList.add("has-image");
-
-      const sourceType = isPdfFile(file) ? `PDF ${result.pageNumber}/${result.pageCount}페이지` : (file.type || converterExtension(file).toUpperCase());
-      setConverterDetails("PNG 변환 완료", [
-        `${file.name} (${formatBytes(file.size)})`,
-        `${sourceType} → PNG ${result.width}x${result.height}`,
-        `저장 파일명: ${app.convertedName}`
-      ]);
-      setStatus(els.converterStatus, "PNG 변환이 완료되었습니다.", "ok");
+      item.outputName = uniqueOutputName(`${sanitizeFilename(item.file.name)}${pageSuffix}.png`, usedNames);
+      item.dimensions = `${result.width}x${result.height}`;
+      item.status = "done";
     }
 
-    async function convertToPng() {
-      if (!app.converterFile) {
-        setStatus(els.converterStatus, "먼저 변환할 파일을 선택하세요.", "warn");
-        els.converterZone.focus();
+    async function convertConverterItems(runId, rejectedCount = 0) {
+      const total = app.converterItems.length;
+      const usedNames = new Set();
+      let completed = 0;
+      let failed = 0;
+
+      for (const item of app.converterItems) {
+        if (runId !== app.converterRunId) {
+          return;
+        }
+        item.status = "busy";
+        renderConverterList();
+        setConverterActivity("busy", `${completed}/${total} 변환 중`);
+        try {
+          const result = isPdfFile(item.file) ? await pdfFileToPng(item.file) : await imageFileToPng(item.file);
+          if (runId !== app.converterRunId) {
+            return;
+          }
+          setConvertedItem(item, result, usedNames);
+          completed += 1;
+          if (!app.activeConverterId || app.activeConverterId === item.id || !getActiveConverterItem()?.url) {
+            app.activeConverterId = item.id;
+            updateConverterPreview();
+          }
+        } catch (error) {
+          item.status = "error";
+          item.error = error.message || "변환 실패";
+          failed += 1;
+        }
+        renderConverterList();
+      }
+
+      if (runId !== app.converterRunId) {
         return;
       }
-      setBusy(els.convertPngBtn, true, "변환 중");
-      setStatus(els.converterStatus, "PNG로 변환하는 중입니다.", "warn");
-      try {
-        const result = isPdfFile(app.converterFile)
-          ? await pdfFileToPng(app.converterFile)
-          : await imageFileToPng(app.converterFile);
-        setConvertedPng(result, app.converterFile);
-      } catch (error) {
-        clearConvertedPng();
-        setStatus(els.converterStatus, error.message || "PNG 변환에 실패했습니다.", "error");
-      } finally {
-        setBusy(els.convertPngBtn, false);
+      updateConverterPreview();
+      const skipped = rejectedCount ? ` · ${rejectedCount}개 제외` : "";
+      if (failed) {
+        setConverterActivity("error", `${completed}/${total} 완료 · ${failed} 실패`);
+        setStatus(els.converterStatus, `${completed}개 완료, ${failed}개 실패${skipped}`, "warn");
+      } else {
+        setConverterActivity("done", `${completed}개 완료${skipped}`);
+        setStatus(els.converterStatus, `${completed}개 PNG 변환 완료${skipped}`, "ok");
       }
     }
 
-    async function selectConverterFile(file) {
-      if (!file) {
+    async function selectConverterFiles(fileList) {
+      const files = Array.from(fileList || []).filter(Boolean);
+      if (!files.length) {
         return;
       }
-      if (!isSupportedConverterFile(file)) {
+      const supportedFiles = files.filter(isSupportedConverterFile);
+      const rejectedCount = files.length - supportedFiles.length;
+      if (!supportedFiles.length) {
+        resetConverterState();
         setStatus(els.converterStatus, "SVG, JPG, PNG, WebP, GIF, BMP, AVIF, PDF 파일을 지원합니다.", "error");
         return;
       }
-      app.converterFile = file;
-      clearConvertedPng();
-      const isPdf = isPdfFile(file);
-      els.pdfPageInput.disabled = !isPdf;
-      if (isPdf) {
-        els.pdfPageInput.value = els.pdfPageInput.value || "1";
-      } else {
-        els.pdfPageInput.value = "1";
-        els.pdfPageInput.removeAttribute("max");
-      }
-      setConverterDetails("변환할 파일", [
-        `${file.name} (${formatBytes(file.size)})`,
-        isPdf ? "PDF 페이지 번호를 정한 뒤 PNG로 변환합니다." : "이미지 원본 크기로 PNG를 생성합니다."
-      ]);
-      await convertToPng();
+
+      const runId = app.converterRunId + 1;
+      resetConverterState();
+      app.converterRunId = runId;
+      app.converterItems = supportedFiles.map((file, index) => ({
+        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+        file,
+        status: "queued",
+        blob: null,
+        url: "",
+        outputName: "",
+        dimensions: "",
+        error: ""
+      }));
+      app.activeConverterId = app.converterItems[0]?.id || null;
+      renderConverterList();
+      clearConverterPreview();
+      setConverterActivity("busy", "준비 중");
+      setStatus(els.converterStatus, `${app.converterItems.length}개 변환 중`, "warn");
+      await convertConverterItems(runId, rejectedCount);
     }
 
     async function handleConverterPaste(event) {
       const items = Array.from(event.clipboardData?.items || []);
-      const fileItem = items.find((item) => item.kind === "file" && (item.type.startsWith("image/") || item.type === "application/pdf"));
-      if (!fileItem) {
+      const files = items
+        .filter((item) => item.kind === "file" && (item.type.startsWith("image/") || item.type === "application/pdf"))
+        .map((item) => item.getAsFile())
+        .filter(Boolean);
+      if (!files.length) {
         setStatus(els.converterStatus, "붙여넣은 데이터에서 변환 가능한 파일을 찾지 못했습니다.", "warn");
         return;
       }
       event.preventDefault();
-      await selectConverterFile(fileItem.getAsFile());
+      await selectConverterFiles(files);
     }
 
     async function chooseFolder() {
@@ -1891,23 +2146,28 @@
     }
 
     async function saveConvertedPng() {
-      if (!app.convertedBlob) {
-        setStatus(els.converterStatus, "먼저 파일을 PNG로 변환하세요.", "warn");
+      const convertedItems = app.converterItems.filter((item) => item.status === "done" && item.blob);
+      if (!convertedItems.length) {
+        setStatus(els.converterStatus, "저장할 PNG가 없습니다.", "warn");
         els.converterZone.focus();
         return;
       }
 
-      const filename = app.convertedName || `converted-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
       try {
         if (app.directoryHandle) {
-          const handle = await app.directoryHandle.getFileHandle(filename, { create: true });
-          const writable = await handle.createWritable();
-          await writable.write(app.convertedBlob);
-          await writable.close();
+          for (const item of convertedItems) {
+            const handle = await app.directoryHandle.getFileHandle(item.outputName, { create: true });
+            const writable = await handle.createWritable();
+            await writable.write(item.blob);
+            await writable.close();
+          }
         } else {
-          downloadBlob(app.convertedBlob, filename);
+          for (const item of convertedItems) {
+            downloadBlob(item.blob, item.outputName);
+            await new Promise((resolve) => setTimeout(resolve, 120));
+          }
         }
-        setStatus(els.converterStatus, "PNG 파일을 저장했습니다.", "ok");
+        setStatus(els.converterStatus, `${convertedItems.length}개 PNG 저장 완료`, "ok");
       } catch (error) {
         setStatus(els.converterStatus, error.message || "PNG 저장에 실패했습니다.", "error");
       }
@@ -1947,12 +2207,7 @@
         segment.classList.toggle("active", segment.dataset.value === app.qrTheme);
       });
       selectFile(null);
-      app.converterFile = null;
-      els.converterInput.value = "";
-      els.pdfPageInput.value = "1";
-      els.pdfPageInput.disabled = true;
-      clearConvertedPng();
-      setConverterDetails("변환 대기", ["이미지 파일이나 PDF를 PNG로 변환합니다."]);
+      resetConverterState();
       updateQr();
       setStatus(els.settingsStatus, "입력을 초기화했습니다.", "ok");
     }
@@ -2047,13 +2302,7 @@
       });
 
       els.chooseConvertFileBtn.addEventListener("click", () => els.converterInput.click());
-      els.converterInput.addEventListener("change", () => selectConverterFile(els.converterInput.files[0] || null));
-      els.convertPngBtn.addEventListener("click", convertToPng);
-      els.pdfPageInput.addEventListener("change", () => {
-        if (app.converterFile && isPdfFile(app.converterFile)) {
-          convertToPng();
-        }
-      });
+      els.converterInput.addEventListener("change", () => selectConverterFiles(els.converterInput.files));
       els.converterZone.addEventListener("paste", handleConverterPaste);
       document.addEventListener("paste", (event) => {
         if (document.activeElement === els.converterZone || document.activeElement === document.body) {
@@ -2078,7 +2327,7 @@
       });
       els.converterZone.addEventListener("drop", (event) => {
         event.preventDefault();
-        selectConverterFile(event.dataTransfer.files[0] || null);
+        selectConverterFiles(event.dataTransfer.files);
       });
       els.chooseFolderBtn.addEventListener("click", chooseFolder);
       els.saveConvertedBtn.addEventListener("click", saveConvertedPng);
@@ -2095,7 +2344,7 @@
       loadSettings();
       bindEvents();
       setFileMode(app.fileMode);
-      els.pdfPageInput.disabled = true;
+      setConverterActivity("", "대기 중");
       updateQr();
       els.globalStatus.textContent = "모든 도구가 준비됨";
       if (window.lucide) {
