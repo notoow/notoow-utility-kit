@@ -1157,7 +1157,7 @@
 
           <div class="qr-layout">
             <div class="input-stack">
-              <input class="ios-input" id="qrInput" type="text" placeholder="텍스트 또는 URL" value="https://example.com">
+              <input class="ios-input" id="qrInput" type="text" placeholder="https://example.com">
               <div class="segmented" data-segment-group="qrTheme" role="tablist" aria-label="QR 색상">
                 <button class="segment active" type="button" data-value="black">기본</button>
                 <button class="segment" type="button" data-value="green">녹색</button>
@@ -1173,7 +1173,7 @@
                   <span class="switch-track"></span>
                 </label>
               </div>
-              <p class="status" id="qrStatus" aria-live="polite">QR 코드가 준비됨</p>
+              <p class="status" id="qrStatus" aria-live="polite">텍스트 또는 URL을 입력하세요.</p>
               <div class="action-row">
                 <button class="ios-btn primary" id="downloadQrBtn" type="button">
                   <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
@@ -1289,7 +1289,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.21</span>
+      <span>notoow Utility Kit v0.22</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1323,7 +1323,7 @@
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.21"
+      version: "0.22"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1784,10 +1784,15 @@
         setStatus(els.qrStatus, error.message || "QR 코드 생성에 실패했습니다.", "error");
         return;
       }
-      setStatus(els.qrStatus, value.trim() ? "QR 코드가 갱신됨" : "텍스트를 입력하세요.", value.trim() ? "ok" : "warn");
+      setStatus(els.qrStatus, value.trim() ? "QR 코드가 갱신됨" : "텍스트 또는 URL을 입력하세요.", value.trim() ? "ok" : "warn");
     }
 
     async function downloadQr() {
+      if (!els.qrInput.value.trim()) {
+        setStatus(els.qrStatus, "텍스트 또는 URL을 입력하세요.", "warn");
+        els.qrInput.focus();
+        return;
+      }
       await updateQr();
       els.qrCanvas.toBlob((blob) => {
         if (!blob) {
@@ -2199,7 +2204,7 @@
       setFileMode("encrypt");
       els.urlInput.value = "";
       els.shortUrlOutput.value = "";
-      els.qrInput.value = "https://example.com";
+      els.qrInput.value = "";
       app.qrTheme = "black";
       app.qrInvert = false;
       els.qrInvertToggle.checked = false;
