@@ -967,7 +967,7 @@
             </div>
             <div class="widget-title">
               <strong id="urlTitle">URL 단축</strong>
-              <span>is.gd / TinyURL API</span>
+              <span>TinyURL / is.gd API</span>
             </div>
           </div>
 
@@ -1500,17 +1500,17 @@
       setBusy(els.shortenBtn, true);
       const endpoints = [
         {
+          name: "TinyURL",
+          url: `https://tinyurl.com/api-create.php?url=${encodeURIComponent(normalized)}`,
+          parse: async (response) => (await response.text()).trim()
+        },
+        {
           name: "is.gd",
           url: `https://is.gd/create.php?format=json&url=${encodeURIComponent(normalized)}`,
           parse: async (response) => {
             const data = await response.json();
             return data.shorturl || data.shortUrl || "";
           }
-        },
-        {
-          name: "TinyURL",
-          url: `https://tinyurl.com/api-create.php?url=${encodeURIComponent(normalized)}`,
-          parse: async (response) => (await response.text()).trim()
         }
       ];
 
