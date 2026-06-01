@@ -1017,7 +1017,16 @@
                 <button class="segment active" type="button" data-value="black">기본</button>
                 <button class="segment" type="button" data-value="green">녹색</button>
                 <button class="segment" type="button" data-value="blue">청색</button>
-                <button class="segment" type="button" data-value="invert">반전</button>
+              </div>
+              <div class="setting-row">
+                <label class="setting-label" for="qrInvertToggle">
+                  QR 반전
+                  <span>현재 선택한 색상 조합을 뒤집기</span>
+                </label>
+                <label class="switch">
+                  <input id="qrInvertToggle" type="checkbox">
+                  <span class="switch-track"></span>
+                </label>
               </div>
               <p class="status" id="qrStatus" aria-live="polite">QR 코드가 준비됨</p>
               <div class="action-row">
@@ -1135,7 +1144,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.19</span>
+      <span>notoow Utility Kit v0.20</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1158,6 +1167,7 @@
       selectedFile: null,
       fileMode: "encrypt",
       qrTheme: "black",
+      qrInvert: false,
       qr: null,
       converterFile: null,
       convertedBlob: null,
@@ -1169,7 +1179,7 @@
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.19"
+      version: "0.20"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1197,6 +1207,7 @@
       qrCanvas: $("#qrCanvas"),
       qrStatus: $("#qrStatus"),
       downloadQrBtn: $("#downloadQrBtn"),
+      qrInvertToggle: $("#qrInvertToggle"),
       converterInput: $("#converterInput"),
       converterZone: $("#converterZone"),
       converterDetails: $("#converterDetails"),
@@ -1581,10 +1592,16 @@
       const themes = {
         black: { foreground: "#111111", background: "#ffffff" },
         green: { foreground: "#0d7f62", background: "#f7fff9" },
-        blue: { foreground: "#1558d6", background: "#f7fbff" },
-        invert: { foreground: "#ffffff", background: "#101217" }
+        blue: { foreground: "#1558d6", background: "#f7fbff" }
       };
-      return themes[app.qrTheme] || themes.black;
+      const theme = themes[app.qrTheme] || themes.black;
+      if (!app.qrInvert) {
+        return theme;
+      }
+      return {
+        foreground: theme.background,
+        background: theme.foreground
+      };
     }
 
     async function updateQr() {
@@ -1923,6 +1940,12 @@
       els.urlInput.value = "";
       els.shortUrlOutput.value = "";
       els.qrInput.value = "https://example.com";
+      app.qrTheme = "black";
+      app.qrInvert = false;
+      els.qrInvertToggle.checked = false;
+      document.querySelectorAll('[data-segment-group="qrTheme"] .segment').forEach((segment) => {
+        segment.classList.toggle("active", segment.dataset.value === app.qrTheme);
+      });
       selectFile(null);
       app.converterFile = null;
       els.converterInput.value = "";
@@ -2017,6 +2040,11 @@
 
       els.qrInput.addEventListener("input", updateQr);
       els.downloadQrBtn.addEventListener("click", downloadQr);
+      els.qrInvertToggle.addEventListener("change", () => {
+        app.qrInvert = els.qrInvertToggle.checked;
+        updateQr();
+        setStatus(els.qrStatus, app.qrInvert ? "현재 QR 색상을 반전했습니다." : "QR 반전을 껐습니다.", "ok");
+      });
 
       els.chooseConvertFileBtn.addEventListener("click", () => els.converterInput.click());
       els.converterInput.addEventListener("change", () => selectConverterFile(els.converterInput.files[0] || null));
