@@ -960,7 +960,7 @@
         </article>
 
         <article class="widget liquid url-widget" data-liquid aria-labelledby="urlTitle">
-          <span class="url-watermark" aria-hidden="true">notoow</span>
+          <span class="url-watermark" aria-hidden="true">vietls</span>
           <div class="widget-header">
             <div class="icon-box blue">
               <i data-lucide="link-2" stroke-width="2.5" width="20" height="20"></i>
@@ -973,7 +973,7 @@
 
           <span class="watermark-chip">
             <i data-lucide="sparkles" stroke-width="2" width="13" height="13"></i>
-            watermark notoow
+            watermark vietls
           </span>
 
           <div class="input-stack">
@@ -1499,8 +1499,19 @@
 
       setBusy(els.shortenBtn, true);
       const endpoints = [
-        `https://is.gd/create.php?format=simple&url=${encodeURIComponent(normalized)}`,
-        `https://tinyurl.com/api-create.php?url=${encodeURIComponent(normalized)}`
+        {
+          name: "is.gd",
+          url: `https://is.gd/create.php?format=json&url=${encodeURIComponent(normalized)}`,
+          parse: async (response) => {
+            const data = await response.json();
+            return data.shorturl || data.shortUrl || "";
+          }
+        },
+        {
+          name: "TinyURL",
+          url: `https://tinyurl.com/api-create.php?url=${encodeURIComponent(normalized)}`,
+          parse: async (response) => (await response.text()).trim()
+        }
       ];
 
       try {
@@ -1508,12 +1519,12 @@
         let lastError = null;
         for (const endpoint of endpoints) {
           try {
-            const response = await fetch(endpoint, { cache: "no-store" });
-            const text = (await response.text()).trim();
-            if (!response.ok || !/^https?:\/\//i.test(text)) {
-              throw new Error(text || "단축 API 응답이 올바르지 않습니다.");
+            const response = await fetch(endpoint.url, { cache: "no-store" });
+            const candidate = (await endpoint.parse(response)).trim();
+            if (!response.ok || !/^https?:\/\//i.test(candidate)) {
+              throw new Error(candidate || `${endpoint.name} 응답이 올바르지 않습니다.`);
             }
-            shortUrl = text;
+            shortUrl = candidate;
             break;
           } catch (error) {
             lastError = error;
@@ -1528,12 +1539,12 @@
         if (app.settings.autoCopyShortUrl) {
           try {
             await copyText(shortUrl);
-            setStatus(els.urlStatus, "단축 URL을 만들고 클립보드에 복사했습니다. notoow 워터마크가 표시됩니다.", "ok");
+            setStatus(els.urlStatus, "단축 URL을 만들고 클립보드에 복사했습니다. vietls 워터마크가 표시됩니다.", "ok");
           } catch (error) {
             setStatus(els.urlStatus, "단축 URL을 만들었습니다. 브라우저 권한 때문에 자동 복사는 건너뛰었습니다.", "warn");
           }
         } else {
-          setStatus(els.urlStatus, "단축 URL을 만들었습니다. notoow 워터마크가 표시됩니다.", "ok");
+          setStatus(els.urlStatus, "단축 URL을 만들었습니다. vietls 워터마크가 표시됩니다.", "ok");
         }
       } catch (error) {
         setStatus(els.urlStatus, error.message || "URL 단축 서비스에 연결할 수 없습니다.", "error");

@@ -5,7 +5,7 @@ A single-file browser utility app with a polished translucent glass interface.
 ## Features
 
 - File encryption and decryption in the browser with AES-GCM
-- URL shortening with copy/open actions and a `notoow` watermark
+- URL shortening with copy/open actions and a `vietls` watermark
 - QR code generation with color themes and PNG export
 - Clipboard image paste, preview, and PNG/JPEG save
 - Quick links for browser and Windows default-app settings
