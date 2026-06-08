@@ -7,6 +7,7 @@ A single-file browser utility app with a polished translucent glass interface.
 - Batch file encryption and decryption in the browser with AES-GCM
 - URL shortening with copy/open actions and a `vietls` watermark
 - QR code generation with color themes, an invert toggle, and PNG export
+- Text and multi-file SHA checksum generation with copy and TXT export
 - Batch PNG conversion for SVG, JPG/JPEG, WebP, GIF, BMP, AVIF, and every page of PDF files
 - Batch image resize and compression with JPG, WebP, and PNG output
 - Automatic ZIP bundling when PNG or resized-image tools produce multiple output files

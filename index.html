@@ -470,6 +470,22 @@
       color: rgba(247, 248, 251, 0.84);
     }
 
+    .ios-textarea {
+      min-height: 92px;
+      height: auto;
+      padding: 12px 14px;
+      line-height: 1.45;
+      resize: vertical;
+    }
+
+    .hash-output {
+      min-height: 112px;
+      font-family: "Geist Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      word-break: break-all;
+    }
+
     .resize-controls {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1581,6 +1597,60 @@
           </div>
         </article>
 
+        <article class="widget liquid" data-liquid aria-labelledby="hashTitle">
+          <div class="widget-header">
+            <div class="icon-box green">
+              <i data-lucide="fingerprint" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="hashTitle">해시 생성기</strong>
+              <span>텍스트와 파일 체크섬</span>
+            </div>
+          </div>
+
+          <div class="input-stack">
+            <textarea class="ios-input ios-textarea" id="hashText" placeholder="텍스트를 입력하면 해시를 계산합니다."></textarea>
+            <label class="resize-field" for="hashAlgorithm">
+              알고리즘
+              <select class="ios-input resize-select" id="hashAlgorithm">
+                <option value="SHA-256">SHA-256</option>
+                <option value="SHA-384">SHA-384</option>
+                <option value="SHA-512">SHA-512</option>
+                <option value="SHA-1">SHA-1</option>
+              </select>
+            </label>
+          </div>
+
+          <input class="hidden-input" id="hashInput" type="file" multiple>
+          <div class="paste-zone converter-zone" id="hashZone" tabindex="0">
+            <div class="converter-drop-head">
+              <div>
+                <strong>파일을 놓거나 선택</strong>
+                <span>여러 파일은 한 번에 체크섬 계산</span>
+              </div>
+              <i data-lucide="file-check-2" stroke-width="2" width="20" height="20"></i>
+            </div>
+            <div class="converter-file-list" id="hashFileList" aria-live="polite"></div>
+          </div>
+
+          <textarea class="ios-input ios-textarea hash-output" id="hashOutput" readonly placeholder="해시 결과"></textarea>
+          <p class="status" id="hashStatus" aria-live="polite">텍스트를 입력하거나 파일을 선택하세요.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="chooseHashFileBtn" type="button">
+              <i data-lucide="upload" stroke-width="2" width="16" height="16"></i>
+              파일 선택
+            </button>
+            <button class="ios-btn" id="copyHashBtn" type="button">
+              <i data-lucide="copy" stroke-width="2" width="16" height="16"></i>
+              복사
+            </button>
+            <button class="ios-btn primary" id="saveHashBtn" type="button">
+              <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
+              TXT 저장
+            </button>
+          </div>
+        </article>
+
         <article class="widget liquid wide settings-widget" data-liquid aria-labelledby="settingsTitle">
           <div class="widget-header">
             <div class="icon-box slate">
@@ -1635,7 +1705,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.31</span>
+      <span>notoow Utility Kit v0.32</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1686,6 +1756,9 @@
       activeMp3Id: null,
       mp3RunId: 0,
       mp3Processing: false,
+      hashItems: [],
+      hashRunId: 0,
+      hashDebounce: 0,
       pdfjs: null,
       lameReady: null,
       directoryHandle: null,
@@ -1693,7 +1766,7 @@
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.31"
+      version: "0.32"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1777,6 +1850,16 @@
       chooseMp3FileBtn: $("#chooseMp3FileBtn"),
       convertMp3Btn: $("#convertMp3Btn"),
       saveMp3Btn: $("#saveMp3Btn"),
+      hashText: $("#hashText"),
+      hashAlgorithm: $("#hashAlgorithm"),
+      hashInput: $("#hashInput"),
+      hashZone: $("#hashZone"),
+      hashFileList: $("#hashFileList"),
+      hashOutput: $("#hashOutput"),
+      hashStatus: $("#hashStatus"),
+      chooseHashFileBtn: $("#chooseHashFileBtn"),
+      copyHashBtn: $("#copyHashBtn"),
+      saveHashBtn: $("#saveHashBtn"),
       chromeSettingsBtn: $("#chromeSettingsBtn"),
       windowsSettingsBtn: $("#windowsSettingsBtn"),
       settingsStatus: $("#settingsStatus"),
@@ -1844,6 +1927,10 @@
     async function digestBase64(bytes) {
       const hash = await crypto.subtle.digest("SHA-256", bytes);
       return bytesToBase64(new Uint8Array(hash));
+    }
+
+    function bytesToHex(bytes) {
+      return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
     }
 
     function setFileDetails(title, lines) {
@@ -4325,6 +4412,187 @@
       }
     }
 
+    function getHashAlgorithm() {
+      return els.hashAlgorithm.value || "SHA-256";
+    }
+
+    async function digestHexFromBuffer(buffer, algorithm) {
+      const hash = await crypto.subtle.digest(algorithm, buffer);
+      return bytesToHex(new Uint8Array(hash));
+    }
+
+    function setHashOutput(lines) {
+      els.hashOutput.value = Array.isArray(lines) ? lines.join("\n") : lines;
+    }
+
+    function hashItemMeta(item) {
+      if (item.status === "error") {
+        return item.error;
+      }
+      if (item.hash) {
+        return `${item.algorithm} · ${item.hash.slice(0, 18)}...`;
+      }
+      return `${formatBytes(item.file.size)} · ${item.file.type || "알 수 없음"}`;
+    }
+
+    function renderHashList() {
+      els.hashFileList.replaceChildren();
+      app.hashItems.forEach((item) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = `converter-file-row ${item.status}`;
+
+        const textWrap = document.createElement("span");
+        textWrap.className = "converter-file-text";
+        const name = document.createElement("span");
+        name.className = "converter-file-name";
+        name.textContent = item.file.name;
+        const meta = document.createElement("span");
+        meta.className = "converter-file-meta";
+        meta.textContent = hashItemMeta(item);
+        textWrap.append(name, meta);
+
+        const state = document.createElement("span");
+        state.className = "converter-file-state";
+        state.textContent = converterStateLabel(item.status);
+        row.append(textWrap, state);
+        els.hashFileList.appendChild(row);
+      });
+    }
+
+    function resetHashFiles() {
+      app.hashRunId += 1;
+      app.hashItems = [];
+      els.hashInput.value = "";
+      renderHashList();
+    }
+
+    function selectHashFiles(fileList) {
+      const files = Array.from(fileList || []).filter(Boolean);
+      if (!files.length) {
+        return;
+      }
+
+      app.hashRunId += 1;
+      els.hashText.value = "";
+      app.hashItems = files.map((file, index) => ({
+        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+        file,
+        status: "queued",
+        hash: "",
+        algorithm: "",
+        error: ""
+      }));
+      renderHashList();
+      setHashOutput("");
+      setStatus(els.hashStatus, `${files.length}개 파일 해시 계산 중`, "warn");
+      computeFileHashes();
+    }
+
+    function queueTextHash() {
+      window.clearTimeout(app.hashDebounce);
+      app.hashDebounce = window.setTimeout(() => {
+        resetHashFiles();
+        computeTextHash();
+      }, 180);
+    }
+
+    async function computeTextHash() {
+      if (!window.crypto || !crypto.subtle) {
+        setStatus(els.hashStatus, "이 브라우저는 WebCrypto를 지원하지 않습니다.", "error");
+        return;
+      }
+
+      const value = els.hashText.value;
+      if (!value) {
+        setHashOutput("");
+        setStatus(els.hashStatus, "텍스트를 입력하거나 파일을 선택하세요.");
+        return;
+      }
+
+      const algorithm = getHashAlgorithm();
+      try {
+        const bytes = new TextEncoder().encode(value);
+        const hash = await digestHexFromBuffer(bytes, algorithm);
+        setHashOutput([`${algorithm}`, hash]);
+        setStatus(els.hashStatus, "텍스트 해시를 계산했습니다.", "ok");
+      } catch (error) {
+        setStatus(els.hashStatus, error.message || "해시 계산에 실패했습니다.", "error");
+      }
+    }
+
+    async function computeFileHashes() {
+      if (!window.crypto || !crypto.subtle) {
+        setStatus(els.hashStatus, "이 브라우저는 WebCrypto를 지원하지 않습니다.", "error");
+        return;
+      }
+      if (!app.hashItems.length) {
+        computeTextHash();
+        return;
+      }
+
+      const runId = app.hashRunId + 1;
+      app.hashRunId = runId;
+      const algorithm = getHashAlgorithm();
+      let completed = 0;
+      let failed = 0;
+      setHashOutput("");
+
+      for (const item of app.hashItems) {
+        if (runId !== app.hashRunId) {
+          return;
+        }
+        item.status = "busy";
+        item.hash = "";
+        item.algorithm = algorithm;
+        item.error = "";
+        renderHashList();
+        setStatus(els.hashStatus, `${completed + 1}/${app.hashItems.length} 해시 계산 중`, "warn");
+
+        try {
+          const buffer = await item.file.arrayBuffer();
+          item.hash = await digestHexFromBuffer(buffer, algorithm);
+          item.status = "done";
+          completed += 1;
+        } catch (error) {
+          item.status = "error";
+          item.error = error.message || "해시 계산 실패";
+          failed += 1;
+        }
+        renderHashList();
+      }
+
+      const lines = [`# ${algorithm} checksums`];
+      app.hashItems
+        .filter((item) => item.status === "done" && item.hash)
+        .forEach((item) => lines.push(`${item.hash}  ${item.file.name}`));
+      setHashOutput(lines);
+      if (failed) {
+        setStatus(els.hashStatus, `${completed}개 계산, ${failed}개 실패`, "warn");
+      } else {
+        setStatus(els.hashStatus, `${completed}개 파일 해시를 계산했습니다.`, "ok");
+      }
+    }
+
+    async function copyHashOutput() {
+      try {
+        await copyText(els.hashOutput.value);
+        setStatus(els.hashStatus, "해시 결과를 복사했습니다.", "ok");
+      } catch (error) {
+        setStatus(els.hashStatus, error.message, "warn");
+      }
+    }
+
+    function saveHashOutput() {
+      if (!els.hashOutput.value.trim()) {
+        setStatus(els.hashStatus, "저장할 해시 결과가 없습니다.", "warn");
+        return;
+      }
+      const blob = new Blob([els.hashOutput.value], { type: "text/plain;charset=utf-8" });
+      downloadBlob(blob, `checksums-${Date.now()}.txt`);
+      setStatus(els.hashStatus, "해시 결과 TXT를 저장했습니다.", "ok");
+    }
+
     function openChromeSettings() {
       const opened = window.open("chrome://settings/defaultBrowser", "_blank", "noopener,noreferrer");
       setStatus(
@@ -4370,6 +4638,11 @@
       resetResizeState();
       resetPdfState();
       resetMp3State();
+      resetHashFiles();
+      els.hashText.value = "";
+      els.hashAlgorithm.value = "SHA-256";
+      setHashOutput("");
+      setStatus(els.hashStatus, "텍스트를 입력하거나 파일을 선택하세요.");
       updateQr();
       setStatus(els.settingsStatus, "입력을 초기화했습니다.", "ok");
     }
@@ -4584,6 +4857,39 @@
         event.preventDefault();
         selectMp3Files(event.dataTransfer.files);
       });
+
+      els.hashText.addEventListener("input", queueTextHash);
+      els.hashAlgorithm.addEventListener("change", () => {
+        if (app.hashItems.length) {
+          computeFileHashes();
+        } else {
+          computeTextHash();
+        }
+      });
+      els.chooseHashFileBtn.addEventListener("click", () => els.hashInput.click());
+      els.hashInput.addEventListener("change", () => selectHashFiles(els.hashInput.files));
+      ["dragenter", "dragover"].forEach((eventName) => {
+        els.hashZone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          els.hashZone.classList.add("active");
+        });
+      });
+      ["dragleave", "drop"].forEach((eventName) => {
+        els.hashZone.addEventListener(eventName, () => els.hashZone.classList.remove("active"));
+      });
+      els.hashZone.addEventListener("click", () => els.hashInput.click());
+      els.hashZone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          els.hashInput.click();
+        }
+      });
+      els.hashZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        selectHashFiles(event.dataTransfer.files);
+      });
+      els.copyHashBtn.addEventListener("click", copyHashOutput);
+      els.saveHashBtn.addEventListener("click", saveHashOutput);
 
       els.chromeSettingsBtn.addEventListener("click", openChromeSettings);
       els.windowsSettingsBtn.addEventListener("click", openWindowsSettings);
