@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Basic Utility App</title>
 
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307080b'/%3E%3Cpath d='M17 34h30M32 17v30M21 21l22 22M43 21 21 43' stroke='%235ec7ff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.0.3/dist/fonts/geist-sans/style.css">
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -61,7 +62,8 @@
     }
 
     button,
-    input {
+    input,
+    select {
       font: inherit;
     }
 
@@ -308,6 +310,8 @@
     .icon-box.blue { color: #bfeaff; }
     .icon-box.green { color: #bdffd8; }
     .icon-box.purple { color: #ead4ff; }
+    .icon-box.pink { color: #ffd0e0; }
+    .icon-box.cyan { color: #c7fff4; }
     .icon-box.slate { color: #e1e8f4; }
 
     .widget-title {
@@ -463,6 +467,57 @@
 
     .ios-input[readonly] {
       color: rgba(247, 248, 251, 0.84);
+    }
+
+    .resize-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .resize-field {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 710;
+      line-height: 1.25;
+    }
+
+    .resize-field.quality {
+      grid-column: span 2;
+    }
+
+    .resize-field .ios-input {
+      height: 40px;
+      border-radius: 14px;
+      padding: 0 12px;
+    }
+
+    .resize-select {
+      appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, rgba(247, 248, 251, 0.72) 50%),
+        linear-gradient(135deg, rgba(247, 248, 251, 0.72) 50%, transparent 50%);
+      background-position:
+        calc(100% - 18px) 17px,
+        calc(100% - 13px) 17px;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+    }
+
+    .quality-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .ios-range {
+      width: 100%;
+      height: 28px;
+      accent-color: #5ec7ff;
     }
 
     .url-widget {
@@ -1058,6 +1113,14 @@
         grid-template-columns: 1fr;
       }
 
+      .resize-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .resize-field.quality {
+        grid-column: span 1;
+      }
+
       .ios-btn.icon-only {
         width: 100%;
         flex-basis: auto;
@@ -1089,7 +1152,7 @@
       <div class="brand">
         <span class="eyebrow">Glass Utility</span>
         <h1>Basic Utility App</h1>
-        <p>파일 보안, URL, QR, PNG 변환, 기본 앱 설정</p>
+        <p>파일 보안, URL, QR, 이미지 변환, MP3 추출</p>
       </div>
       <div class="system-state liquid" data-liquid aria-live="polite">
         <span class="state-dot"></span>
@@ -1279,6 +1342,78 @@
           </div>
         </article>
 
+        <article class="widget liquid" data-liquid aria-labelledby="resizeTitle">
+          <div class="widget-header">
+            <div class="icon-box cyan">
+              <i data-lucide="scan" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="resizeTitle">이미지 리사이즈</strong>
+              <span>크기 조절과 압축 저장</span>
+            </div>
+          </div>
+
+          <input class="hidden-input" id="resizeInput" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg">
+          <div class="paste-zone converter-zone" id="resizeZone" tabindex="0">
+            <div class="converter-drop-head">
+              <div>
+                <strong>이미지를 놓거나 선택</strong>
+                <span>JPG PNG WEBP SVG</span>
+              </div>
+              <i data-lucide="image-up" stroke-width="2" width="20" height="20"></i>
+            </div>
+            <div class="converter-file-list" id="resizeFileList" aria-live="polite"></div>
+          </div>
+
+          <div class="resize-controls">
+            <label class="resize-field" for="resizeMaxWidth">
+              최대 가로
+              <input class="ios-input" id="resizeMaxWidth" type="number" inputmode="numeric" min="1" max="12000" step="1" value="1600">
+            </label>
+            <label class="resize-field" for="resizeMaxHeight">
+              최대 세로
+              <input class="ios-input" id="resizeMaxHeight" type="number" inputmode="numeric" min="1" max="12000" step="1" value="1600">
+            </label>
+            <label class="resize-field" for="resizeFormat">
+              저장 포맷
+              <select class="ios-input resize-select" id="resizeFormat">
+                <option value="auto">자동</option>
+                <option value="image/jpeg">JPG</option>
+                <option value="image/webp">WebP</option>
+                <option value="image/png">PNG</option>
+              </select>
+            </label>
+            <label class="resize-field quality" for="resizeQuality">
+              <span class="quality-head">
+                <span>품질</span>
+                <span id="resizeQualityValue">82%</span>
+              </span>
+              <input class="ios-range" id="resizeQuality" type="range" min="40" max="100" step="1" value="82">
+            </label>
+          </div>
+
+          <div class="media-activity" id="resizeActivity" aria-live="polite">
+            <span class="converter-spinner" aria-hidden="true"></span>
+            <span id="resizeActivityText">대기 중</span>
+          </div>
+          <div class="preview-box" id="resizePreviewBox">
+            <span class="preview-empty">미리보기 없음</span>
+            <img id="resizePreview" alt="리사이즈된 이미지 미리보기">
+          </div>
+
+          <p class="status" id="resizeStatus" aria-live="polite">이미지를 선택하면 자동으로 리사이즈합니다.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="chooseResizeFileBtn" type="button">
+              <i data-lucide="upload" stroke-width="2" width="16" height="16"></i>
+              파일 선택
+            </button>
+            <button class="ios-btn primary" id="saveResizeBtn" type="button">
+              <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
+              이미지 저장
+            </button>
+          </div>
+        </article>
+
         <article class="widget liquid" data-liquid aria-labelledby="mp3Title">
           <div class="widget-header">
             <div class="icon-box pink">
@@ -1381,7 +1516,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.24</span>
+      <span>notoow Utility Kit v0.25</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1409,6 +1544,10 @@
       converterItems: [],
       activeConverterId: null,
       converterRunId: 0,
+      resizeItems: [],
+      activeResizeId: null,
+      resizeRunId: 0,
+      resizeDebounce: 0,
       mp3File: null,
       mp3Blob: null,
       mp3Url: "",
@@ -1422,7 +1561,7 @@
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.24"
+      version: "0.25"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1463,6 +1602,21 @@
       chooseFolderBtn: $("#chooseFolderBtn"),
       saveConvertedBtn: $("#saveConvertedBtn"),
       folderState: $("#folderState"),
+      resizeInput: $("#resizeInput"),
+      resizeZone: $("#resizeZone"),
+      resizeFileList: $("#resizeFileList"),
+      resizeMaxWidth: $("#resizeMaxWidth"),
+      resizeMaxHeight: $("#resizeMaxHeight"),
+      resizeFormat: $("#resizeFormat"),
+      resizeQuality: $("#resizeQuality"),
+      resizeQualityValue: $("#resizeQualityValue"),
+      resizeActivity: $("#resizeActivity"),
+      resizeActivityText: $("#resizeActivityText"),
+      resizePreviewBox: $("#resizePreviewBox"),
+      resizePreview: $("#resizePreview"),
+      resizeStatus: $("#resizeStatus"),
+      chooseResizeFileBtn: $("#chooseResizeFileBtn"),
+      saveResizeBtn: $("#saveResizeBtn"),
       mp3Input: $("#mp3Input"),
       mp3Zone: $("#mp3Zone"),
       mp3Details: $("#mp3Details"),
@@ -1926,6 +2080,20 @@
       "image/svg+xml",
       "application/pdf"
     ]);
+    const SUPPORTED_RESIZE_TYPES = new Set([
+      "image/png",
+      "image/jpeg",
+      "image/webp",
+      "image/gif",
+      "image/bmp",
+      "image/avif",
+      "image/svg+xml"
+    ]);
+    const RESIZE_OUTPUTS = {
+      "image/jpeg": { extension: "jpg", label: "JPG" },
+      "image/webp": { extension: "webp", label: "WebP" },
+      "image/png": { extension: "png", label: "PNG" }
+    };
 
     function converterExtension(file) {
       return (file.name.split(".").pop() || "").toLowerCase();
@@ -2288,6 +2456,357 @@
       }
     }
 
+    function isSupportedResizeFile(file) {
+      const extension = converterExtension(file);
+      return SUPPORTED_RESIZE_TYPES.has(file.type) || ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "svg"].includes(extension);
+    }
+
+    function parseResizeDimension(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric) || numeric <= 0) {
+        return Infinity;
+      }
+      return Math.min(12000, Math.max(1, Math.round(numeric)));
+    }
+
+    function getResizeOptions() {
+      return {
+        maxWidth: parseResizeDimension(els.resizeMaxWidth.value),
+        maxHeight: parseResizeDimension(els.resizeMaxHeight.value),
+        requestedMime: els.resizeFormat.value,
+        quality: Math.max(0.4, Math.min(1, Number(els.resizeQuality.value) / 100 || 0.82))
+      };
+    }
+
+    function resolveResizeMime(file, requestedMime) {
+      if (requestedMime !== "auto") {
+        return requestedMime;
+      }
+      const extension = converterExtension(file);
+      if (file.type === "image/jpeg" || ["jpg", "jpeg"].includes(extension)) {
+        return "image/jpeg";
+      }
+      if (file.type === "image/webp" || extension === "webp") {
+        return "image/webp";
+      }
+      return "image/png";
+    }
+
+    function resizeOutputExtension(mime) {
+      return RESIZE_OUTPUTS[mime]?.extension || "png";
+    }
+
+    function fitResizeDimensions(width, height, maxWidth, maxHeight) {
+      const widthLimit = Number.isFinite(maxWidth) ? maxWidth / width : 1;
+      const heightLimit = Number.isFinite(maxHeight) ? maxHeight / height : 1;
+      const scale = Math.min(1, widthLimit, heightLimit);
+      return {
+        width: Math.max(1, Math.round(width * scale)),
+        height: Math.max(1, Math.round(height * scale)),
+        scale
+      };
+    }
+
+    function canvasToImageBlob(canvas, mime, quality) {
+      return new Promise((resolve, reject) => {
+        const outputQuality = mime === "image/png" ? undefined : quality;
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("이미지 저장 데이터를 만들지 못했습니다."));
+          }
+        }, mime, outputQuality);
+      });
+    }
+
+    async function resizeImageFile(file, options) {
+      const image = await loadImageFromBlob(file);
+      const sourceWidth = image.naturalWidth || image.width;
+      const sourceHeight = image.naturalHeight || image.height;
+      if (!sourceWidth || !sourceHeight) {
+        throw new Error("이미지 크기를 확인할 수 없습니다.");
+      }
+
+      const dimensions = fitResizeDimensions(sourceWidth, sourceHeight, options.maxWidth, options.maxHeight);
+      const mime = resolveResizeMime(file, options.requestedMime);
+      const canvas = document.createElement("canvas");
+      canvas.width = dimensions.width;
+      canvas.height = dimensions.height;
+      const context = canvas.getContext("2d", { alpha: mime !== "image/jpeg" });
+      if (mime === "image/jpeg") {
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      } else {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(image, 0, 0, dimensions.width, dimensions.height);
+
+      return {
+        blob: await canvasToImageBlob(canvas, mime, options.quality),
+        mime,
+        width: dimensions.width,
+        height: dimensions.height,
+        sourceWidth,
+        sourceHeight
+      };
+    }
+
+    function setResizeActivity(state, text) {
+      els.resizeActivity.className = `media-activity${state ? ` is-${state}` : ""}`;
+      els.resizeActivityText.textContent = text;
+    }
+
+    function clearResizePreview() {
+      els.resizePreview.removeAttribute("src");
+      els.resizePreviewBox.classList.remove("has-image");
+    }
+
+    function revokeResizeUrls(items = app.resizeItems) {
+      items.forEach((item) => {
+        if (item.url) {
+          URL.revokeObjectURL(item.url);
+          item.url = "";
+        }
+      });
+    }
+
+    function getActiveResizeItem() {
+      return app.resizeItems.find((item) => item.id === app.activeResizeId) || null;
+    }
+
+    function updateResizePreview() {
+      const item = getActiveResizeItem() || app.resizeItems.find((entry) => entry.url);
+      if (!item?.url) {
+        clearResizePreview();
+        return;
+      }
+      app.activeResizeId = item.id;
+      els.resizePreview.src = item.url;
+      els.resizePreviewBox.classList.add("has-image");
+    }
+
+    function resizeMeta(item) {
+      if (item.status === "error") {
+        return item.error;
+      }
+      if (!item.outputName || !item.blob) {
+        return converterFileMeta(item.file);
+      }
+      const output = RESIZE_OUTPUTS[item.mime]?.label || "IMG";
+      const saved = item.originalSize > item.blob.size ? ` · ${Math.round((1 - item.blob.size / item.originalSize) * 100)}% 절감` : "";
+      return `${item.outputName} · ${output} ${item.dimensions} · ${formatBytes(item.blob.size)}${saved}`;
+    }
+
+    function renderResizeList() {
+      els.resizeFileList.replaceChildren();
+      app.resizeItems.forEach((item) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = `converter-file-row ${item.status}${item.id === app.activeResizeId ? " active" : ""}`;
+        row.dataset.id = item.id;
+
+        const textWrap = document.createElement("span");
+        textWrap.className = "converter-file-text";
+        const name = document.createElement("span");
+        name.className = "converter-file-name";
+        name.textContent = item.file.name;
+        const meta = document.createElement("span");
+        meta.className = "converter-file-meta";
+        meta.textContent = resizeMeta(item);
+        textWrap.append(name, meta);
+
+        const state = document.createElement("span");
+        state.className = "converter-file-state";
+        state.textContent = converterStateLabel(item.status);
+
+        row.append(textWrap, state);
+        row.addEventListener("click", () => {
+          app.activeResizeId = item.id;
+          updateResizePreview();
+          renderResizeList();
+        });
+        els.resizeFileList.appendChild(row);
+      });
+    }
+
+    function resetResizeState() {
+      app.resizeRunId += 1;
+      window.clearTimeout(app.resizeDebounce);
+      revokeResizeUrls();
+      app.resizeItems = [];
+      app.activeResizeId = null;
+      els.resizeInput.value = "";
+      renderResizeList();
+      clearResizePreview();
+      setResizeActivity("", "대기 중");
+    }
+
+    function setResizedItem(item, result, usedNames) {
+      if (item.url) {
+        URL.revokeObjectURL(item.url);
+      }
+      item.blob = result.blob;
+      item.mime = result.mime;
+      item.url = URL.createObjectURL(result.blob);
+      item.dimensions = `${result.width}x${result.height}`;
+      item.originalSize = item.file.size;
+      item.outputName = uniqueOutputName(
+        `${sanitizeFilename(item.file.name)}-${item.dimensions}.${resizeOutputExtension(result.mime)}`,
+        usedNames
+      );
+      item.status = "done";
+    }
+
+    function prepareResizeRun() {
+      revokeResizeUrls();
+      app.resizeItems.forEach((item) => {
+        item.status = "queued";
+        item.blob = null;
+        item.url = "";
+        item.outputName = "";
+        item.dimensions = "";
+        item.mime = "";
+        item.error = "";
+      });
+      clearResizePreview();
+      renderResizeList();
+    }
+
+    async function processResizeItems(runId, rejectedCount = 0) {
+      const total = app.resizeItems.length;
+      if (!total) {
+        return;
+      }
+
+      const options = getResizeOptions();
+      const usedNames = new Set();
+      let completed = 0;
+      let failed = 0;
+
+      for (const item of app.resizeItems) {
+        if (runId !== app.resizeRunId) {
+          return;
+        }
+        item.status = "busy";
+        renderResizeList();
+        setResizeActivity("busy", `${completed}/${total} 처리 중`);
+        try {
+          const result = await resizeImageFile(item.file, options);
+          if (runId !== app.resizeRunId) {
+            return;
+          }
+          setResizedItem(item, result, usedNames);
+          completed += 1;
+          if (!app.activeResizeId || app.activeResizeId === item.id || !getActiveResizeItem()?.url) {
+            app.activeResizeId = item.id;
+            updateResizePreview();
+          }
+        } catch (error) {
+          item.status = "error";
+          item.error = error.message || "처리 실패";
+          failed += 1;
+        }
+        renderResizeList();
+      }
+
+      if (runId !== app.resizeRunId) {
+        return;
+      }
+      updateResizePreview();
+      const skipped = rejectedCount ? ` · ${rejectedCount}개 제외` : "";
+      if (failed) {
+        setResizeActivity("error", `${completed}/${total} 완료 · ${failed} 실패`);
+        setStatus(els.resizeStatus, `${completed}개 완료, ${failed}개 실패${skipped}`, "warn");
+      } else {
+        setResizeActivity("done", `${completed}개 완료${skipped}`);
+        setStatus(els.resizeStatus, `${completed}개 이미지 처리 완료${skipped}`, "ok");
+      }
+    }
+
+    async function selectResizeFiles(fileList) {
+      const files = Array.from(fileList || []).filter(Boolean);
+      if (!files.length) {
+        return;
+      }
+      const supportedFiles = files.filter(isSupportedResizeFile);
+      const rejectedCount = files.length - supportedFiles.length;
+      if (!supportedFiles.length) {
+        resetResizeState();
+        setStatus(els.resizeStatus, "JPG, PNG, WebP, GIF, BMP, AVIF, SVG 파일을 지원합니다.", "error");
+        return;
+      }
+
+      const runId = app.resizeRunId + 1;
+      resetResizeState();
+      app.resizeRunId = runId;
+      app.resizeItems = supportedFiles.map((file, index) => ({
+        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+        file,
+        status: "queued",
+        blob: null,
+        url: "",
+        outputName: "",
+        dimensions: "",
+        originalSize: file.size,
+        mime: "",
+        error: ""
+      }));
+      app.activeResizeId = app.resizeItems[0]?.id || null;
+      renderResizeList();
+      clearResizePreview();
+      setResizeActivity("busy", "준비 중");
+      setStatus(els.resizeStatus, `${app.resizeItems.length}개 이미지 처리 중`, "warn");
+      await processResizeItems(runId, rejectedCount);
+    }
+
+    function queueResizeReprocess() {
+      els.resizeQualityValue.textContent = `${els.resizeQuality.value}%`;
+      if (!app.resizeItems.length) {
+        return;
+      }
+      const runId = app.resizeRunId + 1;
+      app.resizeRunId = runId;
+      window.clearTimeout(app.resizeDebounce);
+      app.resizeDebounce = window.setTimeout(async () => {
+        prepareResizeRun();
+        setResizeActivity("busy", "옵션 적용 중");
+        setStatus(els.resizeStatus, "옵션 변경을 적용하고 있습니다.", "warn");
+        await processResizeItems(runId);
+      }, 220);
+    }
+
+    async function handleResizePaste(event) {
+      const items = Array.from(event.clipboardData?.items || []);
+      const files = items
+        .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+        .map((item) => item.getAsFile())
+        .filter(Boolean);
+      if (!files.length) {
+        setStatus(els.resizeStatus, "붙여넣은 데이터에서 이미지를 찾지 못했습니다.", "warn");
+        return;
+      }
+      event.preventDefault();
+      await selectResizeFiles(files);
+    }
+
+    async function saveResizedImages() {
+      const resizedItems = app.resizeItems.filter((item) => item.status === "done" && item.blob);
+      if (!resizedItems.length) {
+        setStatus(els.resizeStatus, "저장할 이미지가 없습니다.", "warn");
+        els.resizeZone.focus();
+        return;
+      }
+
+      for (const item of resizedItems) {
+        downloadBlob(item.blob, item.outputName);
+        await new Promise((resolve) => setTimeout(resolve, 120));
+      }
+      setStatus(els.resizeStatus, `${resizedItems.length}개 이미지 저장 완료`, "ok");
+    }
+
     const LAMEJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js";
 
     function setMp3Details(title, lines) {
@@ -2606,6 +3125,7 @@
       });
       selectFile(null);
       resetConverterState();
+      resetResizeState();
       resetMp3State();
       updateQr();
       setStatus(els.settingsStatus, "입력을 초기화했습니다.", "ok");
@@ -2693,6 +3213,9 @@
       els.converterInput.addEventListener("change", () => selectConverterFiles(els.converterInput.files));
       els.converterZone.addEventListener("paste", handleConverterPaste);
       document.addEventListener("paste", (event) => {
+        if (event.defaultPrevented) {
+          return;
+        }
         if (document.activeElement === els.converterZone || document.activeElement === document.body) {
           handleConverterPaste(event);
         }
@@ -2719,6 +3242,43 @@
       });
       els.chooseFolderBtn.addEventListener("click", chooseFolder);
       els.saveConvertedBtn.addEventListener("click", saveConvertedPng);
+
+      els.chooseResizeFileBtn.addEventListener("click", () => els.resizeInput.click());
+      els.resizeInput.addEventListener("change", () => selectResizeFiles(els.resizeInput.files));
+      els.resizeZone.addEventListener("paste", handleResizePaste);
+      document.addEventListener("paste", (event) => {
+        if (event.defaultPrevented) {
+          return;
+        }
+        if (document.activeElement === els.resizeZone) {
+          handleResizePaste(event);
+        }
+      });
+      ["dragenter", "dragover"].forEach((eventName) => {
+        els.resizeZone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          els.resizeZone.classList.add("active");
+        });
+      });
+      ["dragleave", "drop"].forEach((eventName) => {
+        els.resizeZone.addEventListener(eventName, () => els.resizeZone.classList.remove("active"));
+      });
+      els.resizeZone.addEventListener("click", () => els.resizeInput.click());
+      els.resizeZone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          els.resizeInput.click();
+        }
+      });
+      els.resizeZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        selectResizeFiles(event.dataTransfer.files);
+      });
+      [els.resizeMaxWidth, els.resizeMaxHeight, els.resizeFormat, els.resizeQuality].forEach((control) => {
+        control.addEventListener("input", queueResizeReprocess);
+        control.addEventListener("change", queueResizeReprocess);
+      });
+      els.saveResizeBtn.addEventListener("click", saveResizedImages);
 
       els.chooseMp3FileBtn.addEventListener("click", () => els.mp3Input.click());
       els.mp3Input.addEventListener("change", () => selectMp3File(els.mp3Input.files[0] || null));
@@ -2757,6 +3317,8 @@
       bindEvents();
       setFileMode(app.fileMode);
       setConverterActivity("", "대기 중");
+      setResizeActivity("", "대기 중");
+      els.resizeQualityValue.textContent = `${els.resizeQuality.value}%`;
       updateQr();
       els.globalStatus.textContent = "모든 도구가 준비됨";
       if (window.lucide) {
