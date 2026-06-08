@@ -9,6 +9,7 @@ A single-file browser utility app with a polished translucent glass interface.
 - QR code generation with color themes, an invert toggle, and PNG export
 - Batch PNG conversion for SVG, JPG/JPEG, WebP, GIF, BMP, AVIF, and every page of PDF files
 - Batch image resize and compression with JPG, WebP, and PNG output
+- Automatic ZIP bundling when PNG or resized-image tools produce multiple output files
 - Image-to-PDF generation for multiple JPG, PNG, WebP, GIF, BMP, AVIF, and SVG files
 - Browser-based video to MP3 conversion for playable video files
 - Quick links for browser and Windows default-app settings
