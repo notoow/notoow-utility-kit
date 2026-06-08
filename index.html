@@ -616,6 +616,29 @@
       transition: border-color 0.18s ease, background 0.18s ease;
     }
 
+    .drop-zone {
+      min-height: 176px;
+      place-items: stretch;
+      align-content: start;
+      gap: 10px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .file-drop-head strong {
+      display: block;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .file-drop-head span {
+      display: block;
+      margin-top: 3px;
+      color: var(--quiet);
+      font-size: 12px;
+    }
+
     .drop-zone.active,
     .paste-zone:focus,
     .paste-zone.active {
@@ -1191,14 +1214,18 @@
               <i data-lucide="lock-keyhole" stroke-width="2.5" width="20" height="20"></i>
             </div>
             <div class="widget-title">
-              <strong id="fileTitle">파일 암호화</strong>
+              <strong id="fileTitle">파일 암호화/복호화</strong>
               <span id="selectedFileName">선택된 파일 없음</span>
             </div>
           </div>
 
-          <input class="hidden-input" id="fileInput" type="file">
+          <input class="hidden-input" id="fileInput" type="file" multiple>
           <div class="drop-zone" id="dropZone" tabindex="0">
-            파일을 놓거나 선택하세요
+            <div class="file-drop-head">
+              <strong>파일을 놓거나 선택</strong>
+              <span>여러 파일은 ZIP으로 저장</span>
+            </div>
+            <div class="converter-file-list" id="fileList" aria-live="polite"></div>
           </div>
           <div class="file-details" id="fileDetails">
             <strong>파일 정보</strong>
@@ -1608,7 +1635,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.30</span>
+      <span>notoow Utility Kit v0.31</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1629,6 +1656,9 @@
   <script>
     const app = {
       selectedFile: null,
+      fileItems: [],
+      activeFileId: null,
+      fileRunId: 0,
       fileMode: "encrypt",
       qrTheme: "black",
       qrInvert: false,
@@ -1663,7 +1693,7 @@
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.30"
+      version: "0.31"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1674,6 +1704,7 @@
       chooseFileBtn: $("#chooseFileBtn"),
       runFileBtn: $("#runFileBtn"),
       dropZone: $("#dropZone"),
+      fileList: $("#fileList"),
       selectedFileName: $("#selectedFileName"),
       filePassword: $("#filePassword"),
       fileConfirmPassword: $("#fileConfirmPassword"),
@@ -1816,7 +1847,15 @@
     }
 
     function setFileDetails(title, lines) {
-      els.fileDetails.innerHTML = `<strong>${title}</strong>${lines.map((line) => `<span>${line}</span>`).join("")}`;
+      els.fileDetails.replaceChildren();
+      const strong = document.createElement("strong");
+      strong.textContent = title;
+      els.fileDetails.appendChild(strong);
+      lines.forEach((line) => {
+        const span = document.createElement("span");
+        span.textContent = line;
+        els.fileDetails.appendChild(span);
+      });
     }
 
     function setFileMode(mode, statusMessage = "") {
@@ -2052,13 +2091,18 @@
       );
     }
 
-    async function inspectSelectedFile(file) {
-      if (!file) {
+    async function inspectFileItem(item) {
+      if (!item?.file) {
         setFileDetails("파일 정보", ["선택한 파일의 형식과 처리 정보를 여기에 표시합니다."]);
         return;
       }
 
+      const file = item.file;
       const lines = [`크기: ${formatBytes(file.size)}`, `형식: ${file.type || "알 수 없음"}`];
+      if (item.status === "done" && item.blob) {
+        lines.unshift(`저장 이름: ${item.outputName}`);
+        lines.push(`결과 크기: ${formatBytes(item.blob.size)}`);
+      }
       if (/\.wtnenc$/i.test(file.name)) {
         try {
           const text = await file.text();
@@ -2078,18 +2122,169 @@
       setFileDetails("파일 정보", lines);
     }
 
-    function selectFile(file) {
-      app.selectedFile = file;
-      els.selectedFileName.textContent = file ? file.name : "선택된 파일 없음";
-      els.dropZone.textContent = file ? `${file.name} (${Math.ceil(file.size / 1024)} KB)` : "파일을 놓거나 선택하세요";
-      setStatus(els.fileStatus, file ? "파일이 준비됨" : "파일을 선택하세요.", file ? "ok" : "");
-      setFileProgress(0, "대기 중");
-      inspectSelectedFile(file);
-      if (file && /\.wtnenc$/i.test(file.name)) {
-        setFileMode("decrypt", "암호화 파일을 감지해 복호화 모드로 전환했습니다.");
-      } else if (file && app.fileMode === "decrypt") {
-        setFileMode("encrypt", "일반 파일을 감지해 암호화 모드로 전환했습니다.");
+    function getActiveFileItem() {
+      return app.fileItems.find((item) => item.id === app.activeFileId) || null;
+    }
+
+    function fileItemMeta(item) {
+      if (item.status === "error") {
+        return item.error;
       }
+      if (item.status === "done" && item.blob) {
+        return `${item.outputName} · ${formatBytes(item.blob.size)}`;
+      }
+      return `${formatBytes(item.file.size)} · ${item.file.type || "알 수 없음"}`;
+    }
+
+    function renderFileList() {
+      els.fileList.replaceChildren();
+      app.fileItems.forEach((item) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = `converter-file-row ${item.status}${item.id === app.activeFileId ? " active" : ""}`;
+        row.dataset.id = item.id;
+
+        const textWrap = document.createElement("span");
+        textWrap.className = "converter-file-text";
+        const name = document.createElement("span");
+        name.className = "converter-file-name";
+        name.textContent = item.file.name;
+        const meta = document.createElement("span");
+        meta.className = "converter-file-meta";
+        meta.textContent = fileItemMeta(item);
+        textWrap.append(name, meta);
+
+        const state = document.createElement("span");
+        state.className = "converter-file-state";
+        state.textContent = converterStateLabel(item.status);
+
+        row.append(textWrap, state);
+        row.addEventListener("click", () => {
+          app.activeFileId = item.id;
+          app.selectedFile = item.file;
+          inspectFileItem(item);
+          renderFileList();
+        });
+        els.fileList.appendChild(row);
+      });
+    }
+
+    function clearFileOutputs() {
+      app.fileItems.forEach((item) => {
+        item.blob = null;
+        item.outputName = "";
+        item.status = "queued";
+        item.error = "";
+      });
+    }
+
+    function resetFileState() {
+      app.fileRunId += 1;
+      app.selectedFile = null;
+      app.fileItems = [];
+      app.activeFileId = null;
+      els.fileInput.value = "";
+      els.selectedFileName.textContent = "선택된 파일 없음";
+      renderFileList();
+      setFileProgress(0, "대기 중");
+      setFileDetails("파일 정보", ["선택한 파일의 형식과 처리 정보를 여기에 표시합니다."]);
+      setStatus(els.fileStatus, "파일을 선택하세요.");
+    }
+
+    async function selectFiles(fileList) {
+      const files = Array.from(fileList || []).filter(Boolean);
+      if (!files.length) {
+        return;
+      }
+
+      app.fileRunId += 1;
+      app.fileItems = files.map((file, index) => ({
+        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+        file,
+        status: "queued",
+        blob: null,
+        outputName: "",
+        error: ""
+      }));
+      app.activeFileId = app.fileItems[0]?.id || null;
+      app.selectedFile = app.fileItems[0]?.file || null;
+      els.selectedFileName.textContent = files.length === 1 ? files[0].name : `${files.length}개 파일 선택`;
+      renderFileList();
+      setFileProgress(0, "대기 중");
+
+      const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+      const encryptedCount = files.filter((file) => /\.wtnenc$/i.test(file.name)).length;
+      const lines = [
+        `파일 수: ${files.length}개`,
+        `총 크기: ${formatBytes(totalBytes)}`,
+        encryptedCount ? `암호화 파일: ${encryptedCount}개` : "일반 파일"
+      ];
+      setFileDetails("파일 묶음", lines);
+
+      let readyStatus = `${files.length}개 파일이 준비됨`;
+      let readyType = "ok";
+      if (files.every((file) => /\.wtnenc$/i.test(file.name))) {
+        setFileMode("decrypt");
+        readyStatus = `${files.length}개 암호화 파일 준비됨. 복호화 모드로 전환했습니다.`;
+      } else if (app.fileMode === "decrypt" && encryptedCount === 0) {
+        setFileMode("encrypt");
+        readyStatus = `${files.length}개 일반 파일 준비됨. 암호화 모드로 전환했습니다.`;
+      } else if (encryptedCount > 0 && encryptedCount < files.length) {
+        readyStatus = "일반 파일과 암호화 파일이 섞여 있습니다. 현재 모드로 처리합니다.";
+        readyType = "warn";
+      }
+
+      setStatus(els.fileStatus, readyStatus, readyType);
+    }
+
+    async function encryptFileToBlob(file, password) {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const key = await deriveKey(password, salt);
+      const plainBuffer = await file.arrayBuffer();
+      const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plainBuffer);
+      const encryptedBytes = new Uint8Array(encrypted);
+      const cipherHash = await digestBase64(encryptedBytes);
+      const payload = {
+        magic: "WTNENC1",
+        version: app.version,
+        algorithm: "AES-GCM/PBKDF2-SHA-256",
+        createdAt: new Date().toISOString(),
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        salt: bytesToBase64(salt),
+        iv: bytesToBase64(iv),
+        cipherHash,
+        data: bytesToBase64(encryptedBytes)
+      };
+      return {
+        blob: new Blob([JSON.stringify(payload)], { type: "application/json" }),
+        name: `${file.name}.wtnenc`
+      };
+    }
+
+    async function decryptFileToBlob(file, password) {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      if (payload.magic !== "WTNENC1") {
+        throw new Error("지원하지 않는 암호화 파일입니다.");
+      }
+      const salt = base64ToBytes(payload.salt);
+      const iv = base64ToBytes(payload.iv);
+      const data = base64ToBytes(payload.data);
+      if (payload.cipherHash) {
+        const cipherHash = await digestBase64(data);
+        if (cipherHash !== payload.cipherHash) {
+          throw new Error("파일 데이터가 손상되었거나 변경되었습니다.");
+        }
+      }
+      const key = await deriveKey(password, salt);
+      const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+      return {
+        blob: new Blob([decrypted], { type: payload.type || "application/octet-stream" }),
+        name: payload.name || file.name.replace(/\.wtnenc$/i, "")
+      };
     }
 
     async function runFileTool() {
@@ -2097,7 +2292,7 @@
         setStatus(els.fileStatus, "이 브라우저는 WebCrypto를 지원하지 않습니다.", "error");
         return;
       }
-      if (!app.selectedFile) {
+      if (!app.fileItems.length) {
         setStatus(els.fileStatus, "먼저 파일을 선택하세요.", "warn");
         return;
       }
@@ -2112,60 +2307,64 @@
       }
 
       setBusy(els.runFileBtn, true);
-      setFileProgress(8, "파일 읽는 중");
+      clearFileOutputs();
+      renderFileList();
+      const runId = app.fileRunId + 1;
+      app.fileRunId = runId;
+      const usedNames = new Set();
+      const total = app.fileItems.length;
+      let completed = 0;
+      let failed = 0;
       try {
-        if (app.fileMode === "encrypt") {
-          const salt = crypto.getRandomValues(new Uint8Array(16));
-          const iv = crypto.getRandomValues(new Uint8Array(12));
-          const key = await deriveKey(password, salt);
-          setFileProgress(28, "키 준비 중");
-          const plainBuffer = await app.selectedFile.arrayBuffer();
-          setFileProgress(48, "암호화 중");
-          const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plainBuffer);
-          const encryptedBytes = new Uint8Array(encrypted);
-          const cipherHash = await digestBase64(encryptedBytes);
-          setFileProgress(78, "무결성 정보 작성 중");
-          const payload = {
-            magic: "WTNENC1",
-            version: app.version,
-            algorithm: "AES-GCM/PBKDF2-SHA-256",
-            createdAt: new Date().toISOString(),
-            name: app.selectedFile.name,
-            type: app.selectedFile.type || "application/octet-stream",
-            size: app.selectedFile.size,
-            salt: bytesToBase64(salt),
-            iv: bytesToBase64(iv),
-            cipherHash,
-            data: bytesToBase64(encryptedBytes)
-          };
-          const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-          downloadBlob(blob, `${app.selectedFile.name}.wtnenc`);
-          setFileProgress(100, "완료");
-          setStatus(els.fileStatus, completionMessage("암호화 파일을 저장했습니다."), "ok");
+        for (const [index, item] of app.fileItems.entries()) {
+          if (runId !== app.fileRunId) {
+            return;
+          }
+
+          item.status = "busy";
+          item.error = "";
+          app.activeFileId = item.id;
+          app.selectedFile = item.file;
+          renderFileList();
+          setFileProgress(Math.round((index / total) * 100), `${index + 1}/${total} 처리 중`);
+
+          try {
+            const result = app.fileMode === "encrypt"
+              ? await encryptFileToBlob(item.file, password)
+              : await decryptFileToBlob(item.file, password);
+            item.blob = result.blob;
+            item.outputName = uniqueFileName(result.name, usedNames, `file-${index + 1}`);
+            item.status = "done";
+            completed += 1;
+          } catch (error) {
+            item.status = "error";
+            item.error = error.message || "파일 처리 실패";
+            failed += 1;
+          }
+
+          await inspectFileItem(item);
+          renderFileList();
+        }
+
+        const processedItems = app.fileItems.filter((item) => item.status === "done" && item.blob);
+        if (!processedItems.length) {
+          throw new Error("저장할 결과 파일이 없습니다.");
+        }
+
+        const archiveName = app.fileMode === "encrypt"
+          ? `encrypted-files-${Date.now()}.zip`
+          : `decrypted-files-${Date.now()}.zip`;
+        const saved = await downloadEntries(
+          processedItems.map((item) => ({ name: item.outputName, blob: item.blob })),
+          archiveName
+        );
+        setFileProgress(100, "완료");
+        if (failed) {
+          setStatus(els.fileStatus, `${completed}개 처리, ${failed}개 실패. 결과를 저장했습니다.`, "warn");
         } else {
-          const text = await app.selectedFile.text();
-          const payload = JSON.parse(text);
-          if (payload.magic !== "WTNENC1") {
-            throw new Error("지원하지 않는 암호화 파일입니다.");
-          }
-          setFileProgress(28, "메타데이터 확인 중");
-          const salt = base64ToBytes(payload.salt);
-          const iv = base64ToBytes(payload.iv);
-          const data = base64ToBytes(payload.data);
-          if (payload.cipherHash) {
-            const cipherHash = await digestBase64(data);
-            if (cipherHash !== payload.cipherHash) {
-              throw new Error("파일 데이터가 손상되었거나 변경되었습니다.");
-            }
-          }
-          setFileProgress(52, "복호화 중");
-          const key = await deriveKey(password, salt);
-          const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
-          setFileProgress(86, "파일 준비 중");
-          const blob = new Blob([decrypted], { type: payload.type || "application/octet-stream" });
-          downloadBlob(blob, payload.name || app.selectedFile.name.replace(/\.wtnenc$/i, ""));
-          setFileProgress(100, "완료");
-          setStatus(els.fileStatus, completionMessage("복호화 파일을 저장했습니다."), "ok");
+          const actionText = app.fileMode === "encrypt" ? "암호화" : "복호화";
+          const saveText = saved.mode === "zip" ? `ZIP으로 저장했습니다. (${formatBytes(saved.size)})` : "파일을 저장했습니다.";
+          setStatus(els.fileStatus, completionMessage(`${completed}개 파일 ${actionText} 완료, ${saveText}`), "ok");
         }
       } catch (error) {
         setFileProgress(0, "중단됨");
@@ -2361,6 +2560,21 @@
       const dot = cleanName.lastIndexOf(".");
       const stem = dot > 0 ? cleanName.slice(0, dot) : cleanName;
       const extension = dot > 0 ? cleanName.slice(dot) : ".png";
+      let candidate = `${stem}${extension}`;
+      let index = 2;
+      while (usedNames.has(candidate.toLowerCase())) {
+        candidate = `${stem}-${index}${extension}`;
+        index += 1;
+      }
+      usedNames.add(candidate.toLowerCase());
+      return candidate;
+    }
+
+    function uniqueFileName(baseName, usedNames, fallback = "file") {
+      const cleanName = baseName || fallback;
+      const dot = cleanName.lastIndexOf(".");
+      const stem = dot > 0 ? cleanName.slice(0, dot) : cleanName;
+      const extension = dot > 0 ? cleanName.slice(dot) : "";
       let candidate = `${stem}${extension}`;
       let index = 2;
       while (usedNames.has(candidate.toLowerCase())) {
@@ -4134,6 +4348,14 @@
       els.fileInput.value = "";
       els.filePassword.value = "";
       els.fileConfirmPassword.value = "";
+      app.fileRunId += 1;
+      app.fileItems = [];
+      app.activeFileId = null;
+      app.selectedFile = null;
+      els.selectedFileName.textContent = "선택된 파일 없음";
+      renderFileList();
+      setFileDetails("파일 정보", ["선택한 파일의 형식과 처리 정보를 여기에 표시합니다."]);
+      setFileProgress(0, "대기 중");
       setFileMode("encrypt");
       els.urlInput.value = "";
       els.shortUrlOutput.value = "";
@@ -4144,7 +4366,6 @@
       document.querySelectorAll('[data-segment-group="qrTheme"] .segment').forEach((segment) => {
         segment.classList.toggle("active", segment.dataset.value === app.qrTheme);
       });
-      selectFile(null);
       resetConverterState();
       resetResizeState();
       resetPdfState();
@@ -4173,7 +4394,7 @@
 
     function bindEvents() {
       els.chooseFileBtn.addEventListener("click", () => els.fileInput.click());
-      els.fileInput.addEventListener("change", () => selectFile(els.fileInput.files[0] || null));
+      els.fileInput.addEventListener("change", () => selectFiles(els.fileInput.files));
       els.runFileBtn.addEventListener("click", runFileTool);
 
       ["dragenter", "dragover"].forEach((eventName) => {
@@ -4194,7 +4415,7 @@
       });
       els.dropZone.addEventListener("drop", (event) => {
         event.preventDefault();
-        selectFile(event.dataTransfer.files[0] || null);
+        selectFiles(event.dataTransfer.files);
       });
 
       document.querySelectorAll(".segment").forEach((button) => {
