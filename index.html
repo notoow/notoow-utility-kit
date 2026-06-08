@@ -1312,7 +1312,7 @@
             </div>
             <div class="widget-title">
               <strong id="converterTitle">PNG 변환기</strong>
-              <span id="folderState">다운로드 폴더 사용</span>
+              <span id="folderState">PDF 전 페이지 지원</span>
             </div>
           </div>
 
@@ -1321,7 +1321,7 @@
             <div class="converter-drop-head">
               <div>
                 <strong>파일을 놓거나 선택</strong>
-                <span>SVG JPG WEBP PDF</span>
+                <span>SVG JPG WEBP PDF 전체 페이지</span>
               </div>
               <i data-lucide="upload-cloud" stroke-width="2" width="20" height="20"></i>
             </div>
@@ -1336,7 +1336,7 @@
             <img id="converterPreview" alt="변환된 PNG 미리보기">
           </div>
 
-          <p class="status" id="converterStatus" aria-live="polite">파일을 선택하면 PNG 변환을 시작합니다.</p>
+          <p class="status" id="converterStatus" aria-live="polite">파일을 선택하면 PNG 변환을 시작합니다. PDF는 모든 페이지를 변환합니다.</p>
           <div class="action-row">
             <button class="ios-btn" id="chooseConvertFileBtn" type="button">
               <i data-lucide="upload" stroke-width="2" width="16" height="16"></i>
@@ -1594,7 +1594,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.26</span>
+      <span>notoow Utility Kit v0.27</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1645,7 +1645,7 @@
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.26"
+      version: "0.27"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2244,13 +2244,38 @@
       els.previewBox.classList.remove("has-image");
     }
 
+    function getConverterOutputs(item) {
+      if (Array.isArray(item.outputs) && item.outputs.length) {
+        return item.outputs;
+      }
+      if (item.blob) {
+        return [{
+          blob: item.blob,
+          url: item.url,
+          outputName: item.outputName,
+          dimensions: item.dimensions,
+          pageNumber: item.pageNumber || null,
+          pageCount: item.pageCount || null
+        }];
+      }
+      return [];
+    }
+
     function revokeConverterUrls(items = app.converterItems) {
+      const urls = new Set();
       items.forEach((item) => {
         if (item.url) {
-          URL.revokeObjectURL(item.url);
+          urls.add(item.url);
           item.url = "";
         }
+        getConverterOutputs(item).forEach((output) => {
+          if (output.url) {
+            urls.add(output.url);
+            output.url = "";
+          }
+        });
       });
+      urls.forEach((url) => URL.revokeObjectURL(url));
     }
 
     function setConverterActivity(state, text) {
@@ -2263,14 +2288,32 @@
     }
 
     function updateConverterPreview() {
-      const item = getActiveConverterItem() || app.converterItems.find((entry) => entry.url);
-      if (!item?.url) {
+      const item = getActiveConverterItem() || app.converterItems.find((entry) => getConverterOutputs(entry).some((output) => output.url));
+      const output = item ? getConverterOutputs(item).find((entry) => entry.url) : null;
+      if (!output?.url) {
         clearConverterPreview();
         return;
       }
       app.activeConverterId = item.id;
-      els.converterPreview.src = item.url;
+      els.converterPreview.src = output.url;
       els.previewBox.classList.add("has-image");
+    }
+
+    function converterItemMeta(item) {
+      if (item.status === "error") {
+        return item.error;
+      }
+      const outputs = getConverterOutputs(item);
+      if (!outputs.length) {
+        return converterFileMeta(item.file);
+      }
+      if (outputs.length === 1) {
+        const output = outputs[0];
+        return `${output.outputName || item.outputName} · ${output.dimensions || item.dimensions}`;
+      }
+      const totalBytes = outputs.reduce((sum, output) => sum + (output.blob?.size || 0), 0);
+      const pageText = item.pageCount ? `${item.pageCount}페이지` : `${outputs.length}개`;
+      return `${outputs.length}개 PNG · ${pageText} · ${formatBytes(totalBytes)}`;
     }
 
     function renderConverterList() {
@@ -2288,7 +2331,7 @@
         name.textContent = item.file.name;
         const meta = document.createElement("span");
         meta.className = "converter-file-meta";
-        meta.textContent = item.status === "error" ? item.error : (item.outputName || converterFileMeta(item.file));
+        meta.textContent = converterItemMeta(item);
         textWrap.append(name, meta);
 
         const state = document.createElement("span");
@@ -2376,43 +2419,63 @@
       return pdfjs;
     }
 
-    async function pdfFileToPng(file) {
+    async function pdfFileToPng(file, onPageStart) {
       const pdfjs = await loadPdfJs();
       const bytes = new Uint8Array(await file.arrayBuffer());
       const pdf = await pdfjs.getDocument({ data: bytes }).promise;
       const pageCount = pdf.numPages;
-      const pageNumber = 1;
+      const outputs = [];
 
-      const page = await pdf.getPage(pageNumber);
-      const baseViewport = page.getViewport({ scale: 1 });
-      const scale = Math.min(3, Math.max(1.5, 1800 / baseViewport.width));
-      const viewport = page.getViewport({ scale });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
-      const context = canvas.getContext("2d", { alpha: false });
-      context.fillStyle = "#ffffff";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: context, viewport }).promise;
+      for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+        onPageStart?.(pageNumber, pageCount);
+        const page = await pdf.getPage(pageNumber);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = Math.min(3, Math.max(1.5, 1800 / baseViewport.width));
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const context = canvas.getContext("2d", { alpha: false });
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: context, viewport }).promise;
+        page.cleanup?.();
 
-      return {
-        blob: await canvasToPngBlob(canvas),
-        width: canvas.width,
-        height: canvas.height,
-        pageCount,
-        pageNumber
-      };
+        outputs.push({
+          blob: await canvasToPngBlob(canvas),
+          width: canvas.width,
+          height: canvas.height,
+          pageCount,
+          pageNumber
+        });
+      }
+
+      await pdf.destroy?.();
+      return outputs;
     }
 
     function setConvertedItem(item, result, usedNames) {
-      if (item.url) {
-        URL.revokeObjectURL(item.url);
-      }
-      item.blob = result.blob;
-      item.url = URL.createObjectURL(result.blob);
-      const pageSuffix = result.pageNumber ? `-page-${String(result.pageNumber).padStart(2, "0")}` : "";
-      item.outputName = uniqueOutputName(`${sanitizeFilename(item.file.name)}${pageSuffix}.png`, usedNames);
-      item.dimensions = `${result.width}x${result.height}`;
+      revokeConverterUrls([item]);
+      const results = Array.isArray(result) ? result : [result];
+      item.outputs = results.map((entry) => {
+        const pageSuffix = entry.pageNumber ? `-page-${String(entry.pageNumber).padStart(2, "0")}` : "";
+        const outputName = uniqueOutputName(`${sanitizeFilename(item.file.name)}${pageSuffix}.png`, usedNames);
+        return {
+          blob: entry.blob,
+          url: URL.createObjectURL(entry.blob),
+          outputName,
+          dimensions: `${entry.width}x${entry.height}`,
+          pageNumber: entry.pageNumber || null,
+          pageCount: entry.pageCount || null
+        };
+      });
+      const firstOutput = item.outputs[0] || null;
+      item.blob = firstOutput?.blob || null;
+      item.url = firstOutput?.url || "";
+      item.outputName = item.outputs.length > 1 ? `${item.outputs.length}개 PNG` : (firstOutput?.outputName || "");
+      item.dimensions = firstOutput?.dimensions || "";
+      item.pageCount = firstOutput?.pageCount || item.outputs.length || null;
+      item.pageNumber = firstOutput?.pageNumber || null;
       item.status = "done";
     }
 
@@ -2420,6 +2483,7 @@
       const total = app.converterItems.length;
       const usedNames = new Set();
       let completed = 0;
+      let outputCount = 0;
       let failed = 0;
 
       for (const item of app.converterItems) {
@@ -2430,13 +2494,20 @@
         renderConverterList();
         setConverterActivity("busy", `${completed}/${total} 변환 중`);
         try {
-          const result = isPdfFile(item.file) ? await pdfFileToPng(item.file) : await imageFileToPng(item.file);
+          const result = isPdfFile(item.file)
+            ? await pdfFileToPng(item.file, (pageNumber, pageCount) => {
+                if (runId === app.converterRunId) {
+                  setConverterActivity("busy", `${completed}/${total} · PDF ${pageNumber}/${pageCount}`);
+                }
+              })
+            : await imageFileToPng(item.file);
           if (runId !== app.converterRunId) {
             return;
           }
           setConvertedItem(item, result, usedNames);
+          outputCount += getConverterOutputs(item).length;
           completed += 1;
-          if (!app.activeConverterId || app.activeConverterId === item.id || !getActiveConverterItem()?.url) {
+          if (!app.activeConverterId || app.activeConverterId === item.id || !getConverterOutputs(getActiveConverterItem() || {}).some((output) => output.url)) {
             app.activeConverterId = item.id;
             updateConverterPreview();
           }
@@ -2455,10 +2526,10 @@
       const skipped = rejectedCount ? ` · ${rejectedCount}개 제외` : "";
       if (failed) {
         setConverterActivity("error", `${completed}/${total} 완료 · ${failed} 실패`);
-        setStatus(els.converterStatus, `${completed}개 완료, ${failed}개 실패${skipped}`, "warn");
+        setStatus(els.converterStatus, `${outputCount}개 PNG 준비, ${failed}개 실패${skipped}`, "warn");
       } else {
-        setConverterActivity("done", `${completed}개 완료${skipped}`);
-        setStatus(els.converterStatus, `${completed}개 PNG 변환 완료${skipped}`, "ok");
+        setConverterActivity("done", `${outputCount}개 PNG${skipped}`);
+        setStatus(els.converterStatus, `${outputCount}개 PNG 변환 완료${skipped}`, "ok");
       }
     }
 
@@ -2484,8 +2555,11 @@
         status: "queued",
         blob: null,
         url: "",
+        outputs: [],
         outputName: "",
         dimensions: "",
+        pageCount: null,
+        pageNumber: null,
         error: ""
       }));
       app.activeConverterId = app.converterItems[0]?.id || null;
@@ -2527,8 +2601,11 @@
     }
 
     async function saveConvertedPng() {
-      const convertedItems = app.converterItems.filter((item) => item.status === "done" && item.blob);
-      if (!convertedItems.length) {
+      const convertedOutputs = app.converterItems
+        .filter((item) => item.status === "done")
+        .flatMap((item) => getConverterOutputs(item))
+        .filter((output) => output.blob);
+      if (!convertedOutputs.length) {
         setStatus(els.converterStatus, "저장할 PNG가 없습니다.", "warn");
         els.converterZone.focus();
         return;
@@ -2536,19 +2613,19 @@
 
       try {
         if (app.directoryHandle) {
-          for (const item of convertedItems) {
-            const handle = await app.directoryHandle.getFileHandle(item.outputName, { create: true });
+          for (const output of convertedOutputs) {
+            const handle = await app.directoryHandle.getFileHandle(output.outputName, { create: true });
             const writable = await handle.createWritable();
-            await writable.write(item.blob);
+            await writable.write(output.blob);
             await writable.close();
           }
         } else {
-          for (const item of convertedItems) {
-            downloadBlob(item.blob, item.outputName);
+          for (const output of convertedOutputs) {
+            downloadBlob(output.blob, output.outputName);
             await new Promise((resolve) => setTimeout(resolve, 120));
           }
         }
-        setStatus(els.converterStatus, `${convertedItems.length}개 PNG 저장 완료`, "ok");
+        setStatus(els.converterStatus, `${convertedOutputs.length}개 PNG 저장 완료`, "ok");
       } catch (error) {
         setStatus(els.converterStatus, error.message || "PNG 저장에 실패했습니다.", "error");
       }
