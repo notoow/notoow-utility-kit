@@ -312,6 +312,7 @@
     .icon-box.purple { color: #ead4ff; }
     .icon-box.pink { color: #ffd0e0; }
     .icon-box.cyan { color: #c7fff4; }
+    .icon-box.gold { color: #ffe3a3; }
     .icon-box.slate { color: #e1e8f4; }
 
     .widget-title {
@@ -518,6 +519,12 @@
       width: 100%;
       height: 28px;
       accent-color: #5ec7ff;
+    }
+
+    .settings-widget .input-stack {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
     }
 
     .url-widget {
@@ -1121,6 +1128,10 @@
         grid-column: span 1;
       }
 
+      .settings-widget .input-stack {
+        grid-template-columns: 1fr;
+      }
+
       .ios-btn.icon-only {
         width: 100%;
         flex-basis: auto;
@@ -1152,7 +1163,7 @@
       <div class="brand">
         <span class="eyebrow">Glass Utility</span>
         <h1>Basic Utility App</h1>
-        <p>파일 보안, URL, QR, 이미지 변환, MP3 추출</p>
+        <p>파일 보안, URL, QR, 이미지 변환, PDF 묶기, MP3 추출</p>
       </div>
       <div class="system-state liquid" data-liquid aria-live="polite">
         <span class="state-dot"></span>
@@ -1414,6 +1425,73 @@
           </div>
         </article>
 
+        <article class="widget liquid" data-liquid aria-labelledby="pdfTitle">
+          <div class="widget-header">
+            <div class="icon-box gold">
+              <i data-lucide="files" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="pdfTitle">이미지 PDF 만들기</strong>
+              <span>여러 이미지를 한 PDF로 묶기</span>
+            </div>
+          </div>
+
+          <input class="hidden-input" id="pdfInput" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg">
+          <div class="paste-zone converter-zone" id="pdfZone" tabindex="0">
+            <div class="converter-drop-head">
+              <div>
+                <strong>이미지를 놓거나 선택</strong>
+                <span>선택 순서대로 페이지 생성</span>
+              </div>
+              <i data-lucide="file-up" stroke-width="2" width="20" height="20"></i>
+            </div>
+            <div class="converter-file-list" id="pdfFileList" aria-live="polite"></div>
+          </div>
+
+          <div class="resize-controls">
+            <label class="resize-field" for="pdfPageSize">
+              페이지
+              <select class="ios-input resize-select" id="pdfPageSize">
+                <option value="auto">이미지 비율</option>
+                <option value="a4-portrait">A4 세로</option>
+                <option value="a4-landscape">A4 가로</option>
+              </select>
+            </label>
+            <label class="resize-field" for="pdfMargin">
+              여백
+              <input class="ios-input" id="pdfMargin" type="number" inputmode="numeric" min="0" max="120" step="1" value="24">
+            </label>
+            <label class="resize-field quality" for="pdfQuality">
+              <span class="quality-head">
+                <span>압축 품질</span>
+                <span id="pdfQualityValue">86%</span>
+              </span>
+              <input class="ios-range" id="pdfQuality" type="range" min="45" max="100" step="1" value="86">
+            </label>
+          </div>
+
+          <div class="media-activity" id="pdfActivity" aria-live="polite">
+            <span class="converter-spinner" aria-hidden="true"></span>
+            <span id="pdfActivityText">대기 중</span>
+          </div>
+          <div class="preview-box" id="pdfPreviewBox">
+            <span class="preview-empty">미리보기 없음</span>
+            <img id="pdfPreview" alt="PDF 첫 페이지 이미지 미리보기">
+          </div>
+
+          <p class="status" id="pdfStatus" aria-live="polite">이미지를 선택하면 PDF를 자동 생성합니다.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="choosePdfFileBtn" type="button">
+              <i data-lucide="upload" stroke-width="2" width="16" height="16"></i>
+              파일 선택
+            </button>
+            <button class="ios-btn primary" id="savePdfBtn" type="button">
+              <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
+              PDF 저장
+            </button>
+          </div>
+        </article>
+
         <article class="widget liquid" data-liquid aria-labelledby="mp3Title">
           <div class="widget-header">
             <div class="icon-box pink">
@@ -1462,7 +1540,7 @@
           </div>
         </article>
 
-        <article class="widget liquid" data-liquid aria-labelledby="settingsTitle">
+        <article class="widget liquid wide settings-widget" data-liquid aria-labelledby="settingsTitle">
           <div class="widget-header">
             <div class="icon-box slate">
               <i data-lucide="settings-2" stroke-width="2.5" width="20" height="20"></i>
@@ -1516,7 +1594,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.25</span>
+      <span>notoow Utility Kit v0.26</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1548,6 +1626,12 @@
       activeResizeId: null,
       resizeRunId: 0,
       resizeDebounce: 0,
+      pdfItems: [],
+      activePdfId: null,
+      pdfRunId: 0,
+      pdfDebounce: 0,
+      pdfBlob: null,
+      pdfOutputName: "",
       mp3File: null,
       mp3Blob: null,
       mp3Url: "",
@@ -1561,7 +1645,7 @@
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.25"
+      version: "0.26"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1617,6 +1701,20 @@
       resizeStatus: $("#resizeStatus"),
       chooseResizeFileBtn: $("#chooseResizeFileBtn"),
       saveResizeBtn: $("#saveResizeBtn"),
+      pdfInput: $("#pdfInput"),
+      pdfZone: $("#pdfZone"),
+      pdfFileList: $("#pdfFileList"),
+      pdfPageSize: $("#pdfPageSize"),
+      pdfMargin: $("#pdfMargin"),
+      pdfQuality: $("#pdfQuality"),
+      pdfQualityValue: $("#pdfQualityValue"),
+      pdfActivity: $("#pdfActivity"),
+      pdfActivityText: $("#pdfActivityText"),
+      pdfPreviewBox: $("#pdfPreviewBox"),
+      pdfPreview: $("#pdfPreview"),
+      pdfStatus: $("#pdfStatus"),
+      choosePdfFileBtn: $("#choosePdfFileBtn"),
+      savePdfBtn: $("#savePdfBtn"),
       mp3Input: $("#mp3Input"),
       mp3Zone: $("#mp3Zone"),
       mp3Details: $("#mp3Details"),
@@ -2807,6 +2905,414 @@
       setStatus(els.resizeStatus, `${resizedItems.length}개 이미지 저장 완료`, "ok");
     }
 
+    function setPdfActivity(state, text) {
+      els.pdfActivity.className = `media-activity${state ? ` is-${state}` : ""}`;
+      els.pdfActivityText.textContent = text;
+    }
+
+    function clearPdfPreview() {
+      els.pdfPreview.removeAttribute("src");
+      els.pdfPreviewBox.classList.remove("has-image");
+    }
+
+    function revokePdfUrls(items = app.pdfItems) {
+      items.forEach((item) => {
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+          item.previewUrl = "";
+        }
+      });
+    }
+
+    function clearPdfOutput() {
+      app.pdfBlob = null;
+      app.pdfOutputName = "";
+    }
+
+    function getActivePdfItem() {
+      return app.pdfItems.find((item) => item.id === app.activePdfId) || null;
+    }
+
+    function updatePdfPreview() {
+      const item = getActivePdfItem() || app.pdfItems.find((entry) => entry.previewUrl);
+      if (!item?.previewUrl) {
+        clearPdfPreview();
+        return;
+      }
+      app.activePdfId = item.id;
+      els.pdfPreview.src = item.previewUrl;
+      els.pdfPreviewBox.classList.add("has-image");
+    }
+
+    function pdfItemMeta(item) {
+      if (item.status === "error") {
+        return item.error;
+      }
+      if (item.pageLabel) {
+        return `${item.pageLabel} · ${formatBytes(item.encodedSize || item.file.size)}`;
+      }
+      return converterFileMeta(item.file);
+    }
+
+    function renderPdfList() {
+      els.pdfFileList.replaceChildren();
+      app.pdfItems.forEach((item) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = `converter-file-row ${item.status}${item.id === app.activePdfId ? " active" : ""}`;
+        row.dataset.id = item.id;
+
+        const textWrap = document.createElement("span");
+        textWrap.className = "converter-file-text";
+        const name = document.createElement("span");
+        name.className = "converter-file-name";
+        name.textContent = item.file.name;
+        const meta = document.createElement("span");
+        meta.className = "converter-file-meta";
+        meta.textContent = pdfItemMeta(item);
+        textWrap.append(name, meta);
+
+        const state = document.createElement("span");
+        state.className = "converter-file-state";
+        state.textContent = converterStateLabel(item.status);
+
+        row.append(textWrap, state);
+        row.addEventListener("click", () => {
+          app.activePdfId = item.id;
+          updatePdfPreview();
+          renderPdfList();
+        });
+        els.pdfFileList.appendChild(row);
+      });
+    }
+
+    function resetPdfState() {
+      app.pdfRunId += 1;
+      window.clearTimeout(app.pdfDebounce);
+      revokePdfUrls();
+      app.pdfItems = [];
+      app.activePdfId = null;
+      els.pdfInput.value = "";
+      clearPdfOutput();
+      clearPdfPreview();
+      renderPdfList();
+      setPdfActivity("", "대기 중");
+    }
+
+    function isSupportedPdfImageFile(file) {
+      return isSupportedResizeFile(file);
+    }
+
+    function getPdfOptions() {
+      const margin = Math.max(0, Math.min(120, Math.round(Number(els.pdfMargin.value) || 0)));
+      return {
+        pageSize: els.pdfPageSize.value,
+        margin,
+        quality: Math.max(0.45, Math.min(1, Number(els.pdfQuality.value) / 100 || 0.86))
+      };
+    }
+
+    function getPdfPageBox(sourceWidth, sourceHeight, pageSize) {
+      const a4 = { width: 595.28, height: 841.89 };
+      if (pageSize === "a4-portrait") {
+        return a4;
+      }
+      if (pageSize === "a4-landscape") {
+        return { width: a4.height, height: a4.width };
+      }
+      const aspect = sourceWidth / sourceHeight;
+      const longEdge = Math.min(1080, Math.max(480, Math.max(sourceWidth, sourceHeight)));
+      if (sourceWidth >= sourceHeight) {
+        return { width: longEdge, height: longEdge / aspect };
+      }
+      return { width: longEdge * aspect, height: longEdge };
+    }
+
+    function getPdfDrawBox(pageWidth, pageHeight, imageWidth, imageHeight, margin) {
+      const safeMargin = Math.min(margin, Math.floor(Math.min(pageWidth, pageHeight) / 3));
+      const availableWidth = Math.max(1, pageWidth - safeMargin * 2);
+      const availableHeight = Math.max(1, pageHeight - safeMargin * 2);
+      const scale = Math.min(availableWidth / imageWidth, availableHeight / imageHeight);
+      const width = imageWidth * scale;
+      const height = imageHeight * scale;
+      return {
+        x: (pageWidth - width) / 2,
+        y: (pageHeight - height) / 2,
+        width,
+        height
+      };
+    }
+
+    function pdfNumber(value) {
+      return Number(value).toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+    }
+
+    async function canvasToJpegBytes(canvas, quality) {
+      const blob = await canvasToImageBlob(canvas, "image/jpeg", quality);
+      return new Uint8Array(await blob.arrayBuffer());
+    }
+
+    async function createPdfImageAsset(file, options) {
+      const image = await loadImageFromBlob(file);
+      const sourceWidth = image.naturalWidth || image.width;
+      const sourceHeight = image.naturalHeight || image.height;
+      if (!sourceWidth || !sourceHeight) {
+        throw new Error("이미지 크기를 확인할 수 없습니다.");
+      }
+
+      const maxEmbedEdge = 2400;
+      const embedScale = Math.min(1, maxEmbedEdge / Math.max(sourceWidth, sourceHeight));
+      const imageWidth = Math.max(1, Math.round(sourceWidth * embedScale));
+      const imageHeight = Math.max(1, Math.round(sourceHeight * embedScale));
+      const canvas = document.createElement("canvas");
+      canvas.width = imageWidth;
+      canvas.height = imageHeight;
+      const context = canvas.getContext("2d", { alpha: false });
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, imageWidth, imageHeight);
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(image, 0, 0, imageWidth, imageHeight);
+
+      const page = getPdfPageBox(sourceWidth, sourceHeight, options.pageSize);
+      const draw = getPdfDrawBox(page.width, page.height, imageWidth, imageHeight, options.margin);
+      return {
+        jpegBytes: await canvasToJpegBytes(canvas, options.quality),
+        imageWidth,
+        imageHeight,
+        pageWidth: page.width,
+        pageHeight: page.height,
+        drawX: draw.x,
+        drawY: draw.y,
+        drawWidth: draw.width,
+        drawHeight: draw.height
+      };
+    }
+
+    function buildPdfDocument(assets) {
+      const encoder = new TextEncoder();
+      const chunks = [];
+      const offsets = [];
+      let position = 0;
+
+      const addBytes = (bytes) => {
+        chunks.push(bytes);
+        position += bytes.byteLength;
+      };
+      const addString = (text) => addBytes(encoder.encode(text));
+      const startObject = (id) => {
+        offsets[id] = position;
+        addString(`${id} 0 obj\n`);
+      };
+      const endObject = () => addString("\nendobj\n");
+
+      addString("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+      const totalObjects = 2 + assets.length * 3;
+      const pageIds = assets.map((_, index) => 3 + index * 3);
+
+      startObject(1);
+      addString("<< /Type /Catalog /Pages 2 0 R >>");
+      endObject();
+
+      startObject(2);
+      addString(`<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${assets.length} >>`);
+      endObject();
+
+      assets.forEach((asset, index) => {
+        const pageId = 3 + index * 3;
+        const contentId = pageId + 1;
+        const imageId = pageId + 2;
+        const imageName = `Im${index + 1}`;
+        const content = [
+          "q",
+          `${pdfNumber(asset.drawWidth)} 0 0 ${pdfNumber(asset.drawHeight)} ${pdfNumber(asset.drawX)} ${pdfNumber(asset.drawY)} cm`,
+          `/${imageName} Do`,
+          "Q"
+        ].join("\n");
+        const contentBytes = encoder.encode(`${content}\n`);
+
+        startObject(pageId);
+        addString(
+          `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pdfNumber(asset.pageWidth)} ${pdfNumber(asset.pageHeight)}] ` +
+          `/Resources << /XObject << /${imageName} ${imageId} 0 R >> /ProcSet [/PDF /ImageC] >> /Contents ${contentId} 0 R >>`
+        );
+        endObject();
+
+        startObject(contentId);
+        addString(`<< /Length ${contentBytes.byteLength} >>\nstream\n`);
+        addBytes(contentBytes);
+        addString("endstream");
+        endObject();
+
+        startObject(imageId);
+        addString(
+          `<< /Type /XObject /Subtype /Image /Width ${asset.imageWidth} /Height ${asset.imageHeight} ` +
+          `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${asset.jpegBytes.byteLength} >>\nstream\n`
+        );
+        addBytes(asset.jpegBytes);
+        addString("\nendstream");
+        endObject();
+      });
+
+      const xrefOffset = position;
+      addString(`xref\n0 ${totalObjects + 1}\n0000000000 65535 f \n`);
+      for (let id = 1; id <= totalObjects; id += 1) {
+        addString(`${String(offsets[id]).padStart(10, "0")} 00000 n \n`);
+      }
+      addString(`trailer\n<< /Size ${totalObjects + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+
+      return new Blob(chunks, { type: "application/pdf" });
+    }
+
+    function preparePdfRun() {
+      clearPdfOutput();
+      app.pdfItems.forEach((item) => {
+        item.status = "queued";
+        item.asset = null;
+        item.pageLabel = "";
+        item.encodedSize = 0;
+        item.error = "";
+      });
+      renderPdfList();
+    }
+
+    async function processPdfItems(runId, rejectedCount = 0) {
+      const total = app.pdfItems.length;
+      if (!total) {
+        return;
+      }
+
+      const options = getPdfOptions();
+      let completed = 0;
+      let failed = 0;
+
+      for (const item of app.pdfItems) {
+        if (runId !== app.pdfRunId) {
+          return;
+        }
+        item.status = "busy";
+        renderPdfList();
+        setPdfActivity("busy", `${completed}/${total} PDF 생성 중`);
+        try {
+          const asset = await createPdfImageAsset(item.file, options);
+          if (runId !== app.pdfRunId) {
+            return;
+          }
+          item.asset = asset;
+          item.pageLabel = `${Math.round(asset.pageWidth)}x${Math.round(asset.pageHeight)}pt`;
+          item.encodedSize = asset.jpegBytes.byteLength;
+          item.status = "done";
+          completed += 1;
+          if (!app.activePdfId) {
+            app.activePdfId = item.id;
+          }
+          updatePdfPreview();
+        } catch (error) {
+          item.status = "error";
+          item.error = error.message || "PDF 생성 실패";
+          failed += 1;
+        }
+        renderPdfList();
+      }
+
+      if (runId !== app.pdfRunId) {
+        return;
+      }
+
+      const assets = app.pdfItems.filter((item) => item.status === "done" && item.asset).map((item) => item.asset);
+      const skipped = rejectedCount ? ` · ${rejectedCount}개 제외` : "";
+      if (!assets.length) {
+        clearPdfOutput();
+        setPdfActivity("error", "오류");
+        setStatus(els.pdfStatus, `PDF로 만들 수 있는 이미지가 없습니다.${skipped}`, "error");
+        return;
+      }
+
+      app.pdfBlob = buildPdfDocument(assets);
+      app.pdfOutputName = `images-${Date.now()}.pdf`;
+      if (failed) {
+        setPdfActivity("error", `${completed}/${total} 완료 · ${failed} 실패`);
+        setStatus(els.pdfStatus, `${completed}개 페이지 준비, ${failed}개 실패${skipped}`, "warn");
+      } else {
+        setPdfActivity("done", `${completed}개 페이지`);
+        setStatus(els.pdfStatus, `${completed}개 이미지 PDF 생성 완료 (${formatBytes(app.pdfBlob.size)})${skipped}`, "ok");
+      }
+    }
+
+    async function selectPdfFiles(fileList) {
+      const files = Array.from(fileList || []).filter(Boolean);
+      if (!files.length) {
+        return;
+      }
+      const supportedFiles = files.filter(isSupportedPdfImageFile);
+      const rejectedCount = files.length - supportedFiles.length;
+      if (!supportedFiles.length) {
+        resetPdfState();
+        setStatus(els.pdfStatus, "JPG, PNG, WebP, GIF, BMP, AVIF, SVG 파일을 지원합니다.", "error");
+        return;
+      }
+
+      const runId = app.pdfRunId + 1;
+      resetPdfState();
+      app.pdfRunId = runId;
+      app.pdfItems = supportedFiles.map((file, index) => ({
+        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+        file,
+        status: "queued",
+        previewUrl: URL.createObjectURL(file),
+        asset: null,
+        pageLabel: "",
+        encodedSize: 0,
+        error: ""
+      }));
+      app.activePdfId = app.pdfItems[0]?.id || null;
+      renderPdfList();
+      updatePdfPreview();
+      setPdfActivity("busy", "준비 중");
+      setStatus(els.pdfStatus, `${app.pdfItems.length}개 이미지 PDF 생성 중`, "warn");
+      await processPdfItems(runId, rejectedCount);
+    }
+
+    function queuePdfReprocess() {
+      els.pdfQualityValue.textContent = `${els.pdfQuality.value}%`;
+      if (!app.pdfItems.length) {
+        return;
+      }
+      const runId = app.pdfRunId + 1;
+      app.pdfRunId = runId;
+      window.clearTimeout(app.pdfDebounce);
+      app.pdfDebounce = window.setTimeout(async () => {
+        preparePdfRun();
+        setPdfActivity("busy", "옵션 적용 중");
+        setStatus(els.pdfStatus, "PDF 옵션 변경을 적용하고 있습니다.", "warn");
+        await processPdfItems(runId);
+      }, 220);
+    }
+
+    async function handlePdfPaste(event) {
+      const items = Array.from(event.clipboardData?.items || []);
+      const files = items
+        .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+        .map((item) => item.getAsFile())
+        .filter(Boolean);
+      if (!files.length) {
+        setStatus(els.pdfStatus, "붙여넣은 데이터에서 이미지를 찾지 못했습니다.", "warn");
+        return;
+      }
+      event.preventDefault();
+      await selectPdfFiles(files);
+    }
+
+    function savePdf() {
+      if (!app.pdfBlob) {
+        setStatus(els.pdfStatus, "먼저 PDF로 만들 이미지를 선택하세요.", "warn");
+        els.pdfZone.focus();
+        return;
+      }
+      downloadBlob(app.pdfBlob, app.pdfOutputName || `images-${Date.now()}.pdf`);
+      setStatus(els.pdfStatus, "PDF 파일을 저장했습니다.", "ok");
+    }
+
     const LAMEJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js";
 
     function setMp3Details(title, lines) {
@@ -3126,6 +3632,7 @@
       selectFile(null);
       resetConverterState();
       resetResizeState();
+      resetPdfState();
       resetMp3State();
       updateQr();
       setStatus(els.settingsStatus, "입력을 초기화했습니다.", "ok");
@@ -3280,6 +3787,43 @@
       });
       els.saveResizeBtn.addEventListener("click", saveResizedImages);
 
+      els.choosePdfFileBtn.addEventListener("click", () => els.pdfInput.click());
+      els.pdfInput.addEventListener("change", () => selectPdfFiles(els.pdfInput.files));
+      els.pdfZone.addEventListener("paste", handlePdfPaste);
+      document.addEventListener("paste", (event) => {
+        if (event.defaultPrevented) {
+          return;
+        }
+        if (document.activeElement === els.pdfZone) {
+          handlePdfPaste(event);
+        }
+      });
+      ["dragenter", "dragover"].forEach((eventName) => {
+        els.pdfZone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          els.pdfZone.classList.add("active");
+        });
+      });
+      ["dragleave", "drop"].forEach((eventName) => {
+        els.pdfZone.addEventListener(eventName, () => els.pdfZone.classList.remove("active"));
+      });
+      els.pdfZone.addEventListener("click", () => els.pdfInput.click());
+      els.pdfZone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          els.pdfInput.click();
+        }
+      });
+      els.pdfZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        selectPdfFiles(event.dataTransfer.files);
+      });
+      [els.pdfPageSize, els.pdfMargin, els.pdfQuality].forEach((control) => {
+        control.addEventListener("input", queuePdfReprocess);
+        control.addEventListener("change", queuePdfReprocess);
+      });
+      els.savePdfBtn.addEventListener("click", savePdf);
+
       els.chooseMp3FileBtn.addEventListener("click", () => els.mp3Input.click());
       els.mp3Input.addEventListener("change", () => selectMp3File(els.mp3Input.files[0] || null));
       els.convertMp3Btn.addEventListener("click", convertVideoToMp3);
@@ -3319,6 +3863,8 @@
       setConverterActivity("", "대기 중");
       setResizeActivity("", "대기 중");
       els.resizeQualityValue.textContent = `${els.resizeQuality.value}%`;
+      setPdfActivity("", "대기 중");
+      els.pdfQualityValue.textContent = `${els.pdfQuality.value}%`;
       updateQr();
       els.globalStatus.textContent = "모든 도구가 준비됨";
       if (window.lucide) {
