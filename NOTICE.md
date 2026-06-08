@@ -20,6 +20,12 @@ This project is released under the MIT License. It also uses the following third
 - License: Apache License 2.0
 - Use: PDF page rendering for PNG conversion
 
+## lamejs
+
+- Project: https://github.com/zhuker/lamejs
+- License: LGPL-3.0
+- Use: Browser-side MP3 encoding
+
 ## Archivo
 
 - Project: https://fonts.google.com/specimen/Archivo
