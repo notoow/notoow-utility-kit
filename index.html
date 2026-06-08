@@ -973,7 +973,8 @@
     }
 
     .preview-box img,
-    .preview-box video {
+    .preview-box video,
+    .preview-box audio {
       display: none;
       max-width: 100%;
       max-height: 176px;
@@ -981,8 +982,14 @@
       object-fit: contain;
     }
 
+    .preview-box audio {
+      width: 100%;
+      max-height: 54px;
+    }
+
     .preview-box.has-image img,
-    .preview-box.has-video video {
+    .preview-box.has-video video,
+    .preview-box.has-audio audio {
       display: block;
     }
 
@@ -993,7 +1000,8 @@
     }
 
     .preview-box.has-image .preview-empty,
-    .preview-box.has-video .preview-empty {
+    .preview-box.has-video .preview-empty,
+    .preview-box.has-audio .preview-empty {
       display: none;
     }
 
@@ -1498,21 +1506,21 @@
               <i data-lucide="music-4" stroke-width="2.5" width="20" height="20"></i>
             </div>
             <div class="widget-title">
-              <strong id="mp3Title">동영상 MP3 변환</strong>
-              <span>브라우저 안에서 오디오 추출</span>
+              <strong id="mp3Title">오디오/동영상 MP3 변환</strong>
+              <span>오디오 파일은 빠르게 인코딩</span>
             </div>
           </div>
 
-          <input class="hidden-input" id="mp3Input" type="file" accept="video/*,.mp4,.webm,.mov,.m4v,.mkv,.avi">
+          <input class="hidden-input" id="mp3Input" type="file" accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.flac,.mp4,.webm,.mov,.m4v,.mkv,.avi">
           <div class="paste-zone media-zone" id="mp3Zone" tabindex="0">
             <div>
-              <strong>동영상을 놓거나 선택</strong>
-              <span>MP4 WEBM MOV</span>
+              <strong>오디오나 동영상을 놓거나 선택</strong>
+              <span>WAV MP3 M4A MP4 WEBM</span>
             </div>
           </div>
           <div class="file-details" id="mp3Details">
             <strong>변환 대기</strong>
-            <span>브라우저에서 재생 가능한 영상의 오디오를 MP3로 저장합니다.</span>
+            <span>브라우저에서 재생 가능한 오디오나 영상의 소리를 MP3로 저장합니다.</span>
           </div>
           <div class="media-activity" id="mp3Activity" aria-live="polite">
             <span class="converter-spinner" aria-hidden="true"></span>
@@ -1521,9 +1529,10 @@
           <div class="preview-box" id="mp3PreviewBox">
             <span class="preview-empty">미리보기 없음</span>
             <video id="mp3VideoPreview" controls playsinline preload="metadata"></video>
+            <audio id="mp3AudioPreview" controls preload="metadata"></audio>
           </div>
 
-          <p class="status" id="mp3Status" aria-live="polite">동영상 파일을 선택하세요.</p>
+          <p class="status" id="mp3Status" aria-live="polite">오디오나 동영상 파일을 선택하세요.</p>
           <div class="action-row">
             <button class="ios-btn" id="chooseMp3FileBtn" type="button">
               <i data-lucide="film" stroke-width="2" width="16" height="16"></i>
@@ -1594,7 +1603,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.28</span>
+      <span>notoow Utility Kit v0.29</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1637,6 +1646,7 @@
       mp3Url: "",
       mp3VideoUrl: "",
       mp3OutputName: "",
+      mp3SourceKind: "",
       mp3Processing: false,
       pdfjs: null,
       lameReady: null,
@@ -1645,7 +1655,7 @@
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.28"
+      version: "0.29"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1722,6 +1732,7 @@
       mp3ActivityText: $("#mp3ActivityText"),
       mp3PreviewBox: $("#mp3PreviewBox"),
       mp3VideoPreview: $("#mp3VideoPreview"),
+      mp3AudioPreview: $("#mp3AudioPreview"),
       mp3Status: $("#mp3Status"),
       chooseMp3FileBtn: $("#chooseMp3FileBtn"),
       convertMp3Btn: $("#convertMp3Btn"),
@@ -3568,23 +3579,45 @@
       }
       els.mp3VideoPreview.removeAttribute("src");
       els.mp3VideoPreview.load();
-      els.mp3PreviewBox.classList.remove("has-video");
+      els.mp3AudioPreview.removeAttribute("src");
+      els.mp3AudioPreview.load();
+      els.mp3PreviewBox.classList.remove("has-video", "has-audio");
     }
 
     function resetMp3State() {
       app.mp3File = null;
+      app.mp3SourceKind = "";
       app.mp3Processing = false;
       els.mp3Input.value = "";
       clearMp3Output();
       clearMp3Video();
-      setMp3Details("변환 대기", ["브라우저에서 재생 가능한 영상의 오디오를 MP3로 저장합니다."]);
+      setMp3Details("변환 대기", ["브라우저에서 재생 가능한 오디오나 영상의 소리를 MP3로 저장합니다."]);
       setMp3Activity("", "대기 중");
-      setStatus(els.mp3Status, "동영상 파일을 선택하세요.");
+      setStatus(els.mp3Status, "오디오나 동영상 파일을 선택하세요.");
+    }
+
+    function isSupportedAudioFile(file) {
+      const extension = converterExtension(file);
+      return file.type.startsWith("audio/") || ["mp3", "wav", "m4a", "aac", "ogg", "oga", "flac"].includes(extension);
     }
 
     function isSupportedVideoFile(file) {
       const extension = converterExtension(file);
       return file.type.startsWith("video/") || ["mp4", "webm", "mov", "m4v", "mkv", "avi"].includes(extension);
+    }
+
+    function isSupportedMp3SourceFile(file) {
+      return isSupportedAudioFile(file) || isSupportedVideoFile(file);
+    }
+
+    function formatDuration(seconds) {
+      if (!Number.isFinite(seconds) || seconds <= 0) {
+        return "길이 알 수 없음";
+      }
+      const totalSeconds = Math.round(seconds);
+      const minutes = Math.floor(totalSeconds / 60);
+      const remainder = totalSeconds % 60;
+      return `${minutes}:${String(remainder).padStart(2, "0")}`;
     }
 
     function loadScriptOnce(url, globalName) {
@@ -3657,17 +3690,25 @@
       if (!file) {
         return;
       }
-      if (!isSupportedVideoFile(file)) {
-        setStatus(els.mp3Status, "동영상 파일을 선택하세요.", "error");
+      if (!isSupportedMp3SourceFile(file)) {
+        setStatus(els.mp3Status, "오디오나 동영상 파일을 선택하세요.", "error");
         return;
       }
       clearMp3Output();
       clearMp3Video();
       app.mp3File = file;
+      app.mp3SourceKind = isSupportedAudioFile(file) ? "audio" : "video";
       app.mp3VideoUrl = URL.createObjectURL(file);
-      els.mp3VideoPreview.src = app.mp3VideoUrl;
-      els.mp3PreviewBox.classList.add("has-video");
-      setMp3Details("선택한 동영상", [
+
+      if (app.mp3SourceKind === "audio") {
+        els.mp3AudioPreview.src = app.mp3VideoUrl;
+        els.mp3PreviewBox.classList.add("has-audio");
+      } else {
+        els.mp3VideoPreview.src = app.mp3VideoUrl;
+        els.mp3PreviewBox.classList.add("has-video");
+      }
+
+      setMp3Details(app.mp3SourceKind === "audio" ? "선택한 오디오" : "선택한 동영상", [
         `${file.name} (${formatBytes(file.size)})`,
         file.type || converterExtension(file).toUpperCase()
       ]);
@@ -3675,9 +3716,66 @@
       setStatus(els.mp3Status, "MP3 변환을 실행하세요.", "ok");
     }
 
+    async function convertAudioFileToMp3() {
+      let audioContext = null;
+
+      try {
+        const lame = await loadLameJs();
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const arrayBuffer = await app.mp3File.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+        const sampleRate = audioBuffer.sampleRate;
+        const encoder = new lame.Mp3Encoder(2, sampleRate, 192);
+        const leftData = audioBuffer.getChannelData(0);
+        const rightData = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : leftData;
+        const chunks = [];
+        const frameSize = 1152;
+
+        for (let offset = 0; offset < leftData.length; offset += frameSize) {
+          if (!app.mp3Processing) {
+            return;
+          }
+
+          const end = Math.min(offset + frameSize, leftData.length);
+          const left = floatToInt16(leftData.subarray(offset, end));
+          const right = floatToInt16(rightData.subarray(offset, end));
+          const mp3Buffer = encoder.encodeBuffer(left, right);
+          if (mp3Buffer.length) {
+            chunks.push(mp3Buffer);
+          }
+
+          if (offset % (frameSize * 32) === 0) {
+            const progress = Math.min(99, Math.round((end / leftData.length) * 100));
+            setMp3Activity("busy", `${progress}% 변환 중`);
+            await new Promise((resolve) => window.setTimeout(resolve, 0));
+          }
+        }
+
+        const flush = encoder.flush();
+        if (flush.length) {
+          chunks.push(flush);
+        }
+        if (!chunks.length) {
+          throw new Error("오디오 데이터를 인코딩하지 못했습니다.");
+        }
+
+        app.mp3Blob = new Blob(chunks, { type: "audio/mpeg" });
+        app.mp3Url = URL.createObjectURL(app.mp3Blob);
+        app.mp3OutputName = `${sanitizeFilename(app.mp3File.name)}.mp3`;
+        setMp3Details("MP3 변환 완료", [
+          `${app.mp3OutputName} (${formatBytes(app.mp3Blob.size)})`,
+          `${formatDuration(audioBuffer.duration)} · 192 kbps`
+        ]);
+        setMp3Activity("done", "완료");
+        setStatus(els.mp3Status, "MP3 변환이 완료되었습니다.", "ok");
+      } finally {
+        await audioContext?.close();
+      }
+    }
+
     async function convertVideoToMp3() {
       if (!app.mp3File) {
-        setStatus(els.mp3Status, "먼저 동영상 파일을 선택하세요.", "warn");
+        setStatus(els.mp3Status, "먼저 오디오나 동영상 파일을 선택하세요.", "warn");
         els.mp3Zone.focus();
         return;
       }
@@ -3690,6 +3788,20 @@
       setBusy(els.convertMp3Btn, true, "변환 중");
       setMp3Activity("busy", "인코더 로드 중");
       setStatus(els.mp3Status, "MP3 인코더를 준비하고 있습니다.", "warn");
+
+      if (app.mp3SourceKind === "audio") {
+        try {
+          await convertAudioFileToMp3();
+        } catch (error) {
+          clearMp3Output();
+          setMp3Activity("error", "오류");
+          setStatus(els.mp3Status, error.message || "MP3 변환에 실패했습니다.", "error");
+        } finally {
+          app.mp3Processing = false;
+          setBusy(els.convertMp3Btn, false);
+        }
+        return;
+      }
 
       let audioContext = null;
       let source = null;
