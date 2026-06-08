@@ -543,6 +543,14 @@
       gap: 10px;
     }
 
+    .clean-widget .resize-controls {
+      grid-template-columns: 1fr;
+    }
+
+    .clean-widget .resize-field.quality {
+      grid-column: auto;
+    }
+
     .url-widget {
       position: relative;
     }
@@ -1480,6 +1488,70 @@
           </div>
         </article>
 
+        <article class="widget liquid clean-widget" data-liquid aria-labelledby="cleanTitle">
+          <div class="widget-header">
+            <div class="icon-box slate">
+              <i data-lucide="shield-check" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="cleanTitle">이미지 클리너</strong>
+              <span>메타데이터 제거와 클린 저장</span>
+            </div>
+          </div>
+
+          <input class="hidden-input" id="cleanInput" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg">
+          <div class="paste-zone converter-zone" id="cleanZone" tabindex="0">
+            <div class="converter-drop-head">
+              <div>
+                <strong>이미지를 놓거나 선택</strong>
+                <span>원본 크기로 다시 저장</span>
+              </div>
+              <i data-lucide="sparkles" stroke-width="2" width="20" height="20"></i>
+            </div>
+            <div class="converter-file-list" id="cleanFileList" aria-live="polite"></div>
+          </div>
+
+          <div class="resize-controls">
+            <label class="resize-field" for="cleanFormat">
+              저장 포맷
+              <select class="ios-input resize-select" id="cleanFormat">
+                <option value="auto">자동</option>
+                <option value="image/jpeg">JPG</option>
+                <option value="image/webp">WebP</option>
+                <option value="image/png">PNG</option>
+              </select>
+            </label>
+            <label class="resize-field quality" for="cleanQuality">
+              <span class="quality-head">
+                <span>품질</span>
+                <span id="cleanQualityValue">92%</span>
+              </span>
+              <input class="ios-range" id="cleanQuality" type="range" min="50" max="100" step="1" value="92">
+            </label>
+          </div>
+
+          <div class="media-activity" id="cleanActivity" aria-live="polite">
+            <span class="converter-spinner" aria-hidden="true"></span>
+            <span id="cleanActivityText">대기 중</span>
+          </div>
+          <div class="preview-box" id="cleanPreviewBox">
+            <span class="preview-empty">미리보기 없음</span>
+            <img id="cleanPreview" alt="클린 이미지 미리보기">
+          </div>
+
+          <p class="status" id="cleanStatus" aria-live="polite">이미지를 선택하면 메타데이터를 제거합니다.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="chooseCleanFileBtn" type="button">
+              <i data-lucide="upload" stroke-width="2" width="16" height="16"></i>
+              파일 선택
+            </button>
+            <button class="ios-btn primary" id="saveCleanBtn" type="button">
+              <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
+              클린 저장
+            </button>
+          </div>
+        </article>
+
         <article class="widget liquid" data-liquid aria-labelledby="pdfTitle">
           <div class="widget-header">
             <div class="icon-box gold">
@@ -1759,7 +1831,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.33</span>
+      <span>notoow Utility Kit v0.34</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1794,6 +1866,10 @@
       activeResizeId: null,
       resizeRunId: 0,
       resizeDebounce: 0,
+      cleanItems: [],
+      activeCleanId: null,
+      cleanRunId: 0,
+      cleanDebounce: 0,
       pdfItems: [],
       activePdfId: null,
       pdfRunId: 0,
@@ -1825,7 +1901,7 @@
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.33"
+      version: "0.34"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1882,6 +1958,19 @@
       resizeStatus: $("#resizeStatus"),
       chooseResizeFileBtn: $("#chooseResizeFileBtn"),
       saveResizeBtn: $("#saveResizeBtn"),
+      cleanInput: $("#cleanInput"),
+      cleanZone: $("#cleanZone"),
+      cleanFileList: $("#cleanFileList"),
+      cleanFormat: $("#cleanFormat"),
+      cleanQuality: $("#cleanQuality"),
+      cleanQualityValue: $("#cleanQualityValue"),
+      cleanActivity: $("#cleanActivity"),
+      cleanActivityText: $("#cleanActivityText"),
+      cleanPreviewBox: $("#cleanPreviewBox"),
+      cleanPreview: $("#cleanPreview"),
+      cleanStatus: $("#cleanStatus"),
+      chooseCleanFileBtn: $("#chooseCleanFileBtn"),
+      saveCleanBtn: $("#saveCleanBtn"),
       pdfInput: $("#pdfInput"),
       pdfZone: $("#pdfZone"),
       pdfFileList: $("#pdfFileList"),
@@ -3515,6 +3604,305 @@
       }
     }
 
+    function setCleanActivity(state, text) {
+      els.cleanActivity.className = `media-activity${state ? ` is-${state}` : ""}`;
+      els.cleanActivityText.textContent = text;
+    }
+
+    function clearCleanPreview() {
+      els.cleanPreview.removeAttribute("src");
+      els.cleanPreviewBox.classList.remove("has-image");
+    }
+
+    function revokeCleanUrls(items = app.cleanItems) {
+      items.forEach((item) => {
+        if (item.url) {
+          URL.revokeObjectURL(item.url);
+          item.url = "";
+        }
+      });
+    }
+
+    function getActiveCleanItem() {
+      return app.cleanItems.find((item) => item.id === app.activeCleanId) || null;
+    }
+
+    function updateCleanPreview() {
+      const item = getActiveCleanItem() || app.cleanItems.find((entry) => entry.url);
+      if (!item?.url) {
+        clearCleanPreview();
+        return;
+      }
+      app.activeCleanId = item.id;
+      els.cleanPreview.src = item.url;
+      els.cleanPreviewBox.classList.add("has-image");
+    }
+
+    function getCleanOptions() {
+      return {
+        requestedMime: els.cleanFormat.value,
+        quality: Math.max(0.5, Math.min(1, Number(els.cleanQuality.value) / 100 || 0.92))
+      };
+    }
+
+    async function cleanImageFile(file, options) {
+      const image = await loadImageFromBlob(file);
+      const width = image.naturalWidth || image.width;
+      const height = image.naturalHeight || image.height;
+      if (!width || !height) {
+        throw new Error("이미지 크기를 확인할 수 없습니다.");
+      }
+
+      const mime = resolveResizeMime(file, options.requestedMime);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d", { alpha: mime !== "image/jpeg" });
+      if (mime === "image/jpeg") {
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, width, height);
+      } else {
+        context.clearRect(0, 0, width, height);
+      }
+      context.drawImage(image, 0, 0, width, height);
+
+      return {
+        blob: await canvasToImageBlob(canvas, mime, options.quality),
+        mime,
+        width,
+        height
+      };
+    }
+
+    function cleanMeta(item) {
+      if (item.status === "error") {
+        return item.error;
+      }
+      if (!item.outputName || !item.blob) {
+        return converterFileMeta(item.file);
+      }
+      const label = RESIZE_OUTPUTS[item.mime]?.label || "IMG";
+      const delta = item.file.size > item.blob.size
+        ? ` · ${Math.round((1 - item.blob.size / item.file.size) * 100)}% 절감`
+        : "";
+      return `${item.outputName} · ${label} ${item.dimensions} · ${formatBytes(item.blob.size)}${delta}`;
+    }
+
+    function renderCleanList() {
+      els.cleanFileList.replaceChildren();
+      app.cleanItems.forEach((item) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = `converter-file-row ${item.status}${item.id === app.activeCleanId ? " active" : ""}`;
+        row.dataset.id = item.id;
+
+        const textWrap = document.createElement("span");
+        textWrap.className = "converter-file-text";
+        const name = document.createElement("span");
+        name.className = "converter-file-name";
+        name.textContent = item.file.name;
+        const meta = document.createElement("span");
+        meta.className = "converter-file-meta";
+        meta.textContent = cleanMeta(item);
+        textWrap.append(name, meta);
+
+        const state = document.createElement("span");
+        state.className = "converter-file-state";
+        state.textContent = converterStateLabel(item.status);
+
+        row.append(textWrap, state);
+        row.addEventListener("click", () => {
+          app.activeCleanId = item.id;
+          updateCleanPreview();
+          renderCleanList();
+        });
+        els.cleanFileList.appendChild(row);
+      });
+    }
+
+    function resetCleanState() {
+      app.cleanRunId += 1;
+      window.clearTimeout(app.cleanDebounce);
+      revokeCleanUrls();
+      app.cleanItems = [];
+      app.activeCleanId = null;
+      els.cleanInput.value = "";
+      renderCleanList();
+      clearCleanPreview();
+      setCleanActivity("", "대기 중");
+    }
+
+    function setCleanedItem(item, result, usedNames) {
+      if (item.url) {
+        URL.revokeObjectURL(item.url);
+      }
+      item.blob = result.blob;
+      item.mime = result.mime;
+      item.url = URL.createObjectURL(result.blob);
+      item.dimensions = `${result.width}x${result.height}`;
+      item.outputName = uniqueOutputName(
+        `${sanitizeFilename(item.file.name)}-clean.${resizeOutputExtension(result.mime)}`,
+        usedNames
+      );
+      item.status = "done";
+    }
+
+    function prepareCleanRun() {
+      revokeCleanUrls();
+      app.cleanItems.forEach((item) => {
+        item.status = "queued";
+        item.blob = null;
+        item.url = "";
+        item.outputName = "";
+        item.dimensions = "";
+        item.mime = "";
+        item.error = "";
+      });
+      clearCleanPreview();
+      renderCleanList();
+    }
+
+    async function processCleanItems(runId, rejectedCount = 0) {
+      const total = app.cleanItems.length;
+      if (!total) {
+        return;
+      }
+
+      const options = getCleanOptions();
+      const usedNames = new Set();
+      let completed = 0;
+      let failed = 0;
+
+      for (const item of app.cleanItems) {
+        if (runId !== app.cleanRunId) {
+          return;
+        }
+        item.status = "busy";
+        renderCleanList();
+        setCleanActivity("busy", `${completed}/${total} 클린 중`);
+        try {
+          const result = await cleanImageFile(item.file, options);
+          if (runId !== app.cleanRunId) {
+            return;
+          }
+          setCleanedItem(item, result, usedNames);
+          completed += 1;
+          if (!app.activeCleanId || app.activeCleanId === item.id || !getActiveCleanItem()?.url) {
+            app.activeCleanId = item.id;
+            updateCleanPreview();
+          }
+        } catch (error) {
+          item.status = "error";
+          item.error = error.message || "클린 실패";
+          failed += 1;
+        }
+        renderCleanList();
+      }
+
+      if (runId !== app.cleanRunId) {
+        return;
+      }
+      updateCleanPreview();
+      const skipped = rejectedCount ? ` · ${rejectedCount}개 제외` : "";
+      if (failed) {
+        setCleanActivity("error", `${completed}/${total} 완료 · ${failed} 실패`);
+        setStatus(els.cleanStatus, `${completed}개 클린, ${failed}개 실패${skipped}`, "warn");
+      } else {
+        setCleanActivity("done", `${completed}개 클린${skipped}`);
+        setStatus(els.cleanStatus, `${completed}개 이미지 메타데이터 제거 완료${skipped}`, "ok");
+      }
+    }
+
+    async function selectCleanFiles(fileList) {
+      const files = Array.from(fileList || []).filter(Boolean);
+      if (!files.length) {
+        return;
+      }
+      const supportedFiles = files.filter(isSupportedResizeFile);
+      const rejectedCount = files.length - supportedFiles.length;
+      if (!supportedFiles.length) {
+        resetCleanState();
+        setStatus(els.cleanStatus, "JPG, PNG, WebP, GIF, BMP, AVIF, SVG 파일을 지원합니다.", "error");
+        return;
+      }
+
+      const runId = app.cleanRunId + 1;
+      resetCleanState();
+      app.cleanRunId = runId;
+      app.cleanItems = supportedFiles.map((file, index) => ({
+        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+        file,
+        status: "queued",
+        blob: null,
+        url: "",
+        outputName: "",
+        dimensions: "",
+        mime: "",
+        error: ""
+      }));
+      app.activeCleanId = app.cleanItems[0]?.id || null;
+      renderCleanList();
+      clearCleanPreview();
+      setCleanActivity("busy", "준비 중");
+      setStatus(els.cleanStatus, `${app.cleanItems.length}개 이미지 클린 중`, "warn");
+      await processCleanItems(runId, rejectedCount);
+    }
+
+    function queueCleanReprocess() {
+      els.cleanQualityValue.textContent = `${els.cleanQuality.value}%`;
+      if (!app.cleanItems.length) {
+        return;
+      }
+      const runId = app.cleanRunId + 1;
+      app.cleanRunId = runId;
+      window.clearTimeout(app.cleanDebounce);
+      app.cleanDebounce = window.setTimeout(async () => {
+        prepareCleanRun();
+        setCleanActivity("busy", "옵션 적용 중");
+        setStatus(els.cleanStatus, "옵션 변경을 적용하고 있습니다.", "warn");
+        await processCleanItems(runId);
+      }, 220);
+    }
+
+    async function handleCleanPaste(event) {
+      const items = Array.from(event.clipboardData?.items || []);
+      const files = items
+        .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+        .map((item) => item.getAsFile())
+        .filter(Boolean);
+      if (!files.length) {
+        setStatus(els.cleanStatus, "붙여넣은 데이터에서 이미지를 찾지 못했습니다.", "warn");
+        return;
+      }
+      event.preventDefault();
+      await selectCleanFiles(files);
+    }
+
+    async function saveCleanImages() {
+      const cleanItems = app.cleanItems.filter((item) => item.status === "done" && item.blob);
+      if (!cleanItems.length) {
+        setStatus(els.cleanStatus, "저장할 클린 이미지가 없습니다.", "warn");
+        els.cleanZone.focus();
+        return;
+      }
+
+      try {
+        const saved = await downloadEntries(
+          cleanItems.map((item) => ({ name: item.outputName, blob: item.blob })),
+          `clean-images-${Date.now()}.zip`
+        );
+        setStatus(
+          els.cleanStatus,
+          saved.mode === "zip"
+            ? `${cleanItems.length}개 클린 이미지를 ZIP으로 저장했습니다. (${formatBytes(saved.size)})`
+            : "클린 이미지를 저장했습니다.",
+          "ok"
+        );
+      } catch (error) {
+        setStatus(els.cleanStatus, error.message || "클린 이미지 저장에 실패했습니다.", "error");
+      }
+    }
+
     function setPdfActivity(state, text) {
       els.pdfActivity.className = `media-activity${state ? ` is-${state}` : ""}`;
       els.pdfActivityText.textContent = text;
@@ -4908,6 +5296,7 @@
       });
       resetConverterState();
       resetResizeState();
+      resetCleanState();
       resetPdfState();
       resetMp3State();
       resetHashFiles();
@@ -5075,6 +5464,43 @@
       });
       els.saveResizeBtn.addEventListener("click", saveResizedImages);
 
+      els.chooseCleanFileBtn.addEventListener("click", () => els.cleanInput.click());
+      els.cleanInput.addEventListener("change", () => selectCleanFiles(els.cleanInput.files));
+      els.cleanZone.addEventListener("paste", handleCleanPaste);
+      document.addEventListener("paste", (event) => {
+        if (event.defaultPrevented) {
+          return;
+        }
+        if (document.activeElement === els.cleanZone) {
+          handleCleanPaste(event);
+        }
+      });
+      ["dragenter", "dragover"].forEach((eventName) => {
+        els.cleanZone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          els.cleanZone.classList.add("active");
+        });
+      });
+      ["dragleave", "drop"].forEach((eventName) => {
+        els.cleanZone.addEventListener(eventName, () => els.cleanZone.classList.remove("active"));
+      });
+      els.cleanZone.addEventListener("click", () => els.cleanInput.click());
+      els.cleanZone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          els.cleanInput.click();
+        }
+      });
+      els.cleanZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        selectCleanFiles(event.dataTransfer.files);
+      });
+      [els.cleanFormat, els.cleanQuality].forEach((control) => {
+        control.addEventListener("input", queueCleanReprocess);
+        control.addEventListener("change", queueCleanReprocess);
+      });
+      els.saveCleanBtn.addEventListener("click", saveCleanImages);
+
       els.choosePdfFileBtn.addEventListener("click", () => els.pdfInput.click());
       els.pdfInput.addEventListener("change", () => selectPdfFiles(els.pdfInput.files));
       els.pdfZone.addEventListener("paste", handlePdfPaste);
@@ -5215,6 +5641,8 @@
       setConverterActivity("", "대기 중");
       setResizeActivity("", "대기 중");
       els.resizeQualityValue.textContent = `${els.resizeQuality.value}%`;
+      setCleanActivity("", "대기 중");
+      els.cleanQualityValue.textContent = `${els.cleanQuality.value}%`;
       setPdfActivity("", "대기 중");
       els.pdfQualityValue.textContent = `${els.pdfQuality.value}%`;
       setBase64Mode(app.base64Mode, true);

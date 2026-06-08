@@ -11,7 +11,8 @@ A single-file browser utility app with a polished translucent glass interface.
 - Base64 text encode/decode plus file-to-Base64 and decoded binary export
 - Batch PNG conversion for SVG, JPG/JPEG, WebP, GIF, BMP, AVIF, and every page of PDF files
 - Batch image resize and compression with JPG, WebP, and PNG output
-- Automatic ZIP bundling when PNG or resized-image tools produce multiple output files
+- Batch image metadata cleanup with JPG, WebP, PNG, and ZIP export
+- Automatic ZIP bundling when PNG, resized-image, or cleaned-image tools produce multiple output files
 - Image-to-PDF generation for multiple JPG, PNG, WebP, GIF, BMP, AVIF, and SVG files
 - Batch audio and video to MP3 conversion with ZIP bundling for multiple outputs
 - Quick links for browser and Windows default-app settings
