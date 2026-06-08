@@ -1651,6 +1651,60 @@
           </div>
         </article>
 
+        <article class="widget liquid" data-liquid aria-labelledby="base64Title">
+          <div class="widget-header">
+            <div class="icon-box blue">
+              <i data-lucide="binary" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="base64Title">Base64 변환기</strong>
+              <span>텍스트와 파일 인코딩</span>
+            </div>
+          </div>
+
+          <div class="segmented" data-segment-group="base64Mode" role="tablist" aria-label="Base64 처리 방식">
+            <button class="segment active" type="button" data-value="encode">인코딩</button>
+            <button class="segment" type="button" data-value="decode">디코딩</button>
+          </div>
+
+          <div class="input-stack">
+            <textarea class="ios-input ios-textarea" id="base64Input" placeholder="텍스트를 입력하면 Base64로 인코딩합니다."></textarea>
+            <label class="resize-field" for="base64Filename">
+              디코딩 저장 파일명
+              <input class="ios-input" id="base64Filename" type="text" value="decoded.bin" placeholder="decoded.bin">
+            </label>
+          </div>
+
+          <input class="hidden-input" id="base64FileInput" type="file">
+          <div class="paste-zone converter-zone" id="base64Zone" tabindex="0">
+            <div class="converter-drop-head">
+              <div>
+                <strong>파일을 놓거나 선택</strong>
+                <span>바이너리 파일은 바로 Base64 텍스트로 변환</span>
+              </div>
+              <i data-lucide="file-input" stroke-width="2" width="20" height="20"></i>
+            </div>
+            <div class="converter-file-list" id="base64FileList" aria-live="polite"></div>
+          </div>
+
+          <textarea class="ios-input ios-textarea hash-output" id="base64Output" readonly placeholder="Base64 결과"></textarea>
+          <p class="status" id="base64Status" aria-live="polite">텍스트를 입력하거나 파일을 선택하세요.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="chooseBase64FileBtn" type="button">
+              <i data-lucide="upload" stroke-width="2" width="16" height="16"></i>
+              파일 선택
+            </button>
+            <button class="ios-btn" id="copyBase64Btn" type="button">
+              <i data-lucide="copy" stroke-width="2" width="16" height="16"></i>
+              복사
+            </button>
+            <button class="ios-btn primary" id="saveBase64Btn" type="button">
+              <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
+              저장
+            </button>
+          </div>
+        </article>
+
         <article class="widget liquid wide settings-widget" data-liquid aria-labelledby="settingsTitle">
           <div class="widget-header">
             <div class="icon-box slate">
@@ -1705,7 +1759,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.32</span>
+      <span>notoow Utility Kit v0.33</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1759,6 +1813,11 @@
       hashItems: [],
       hashRunId: 0,
       hashDebounce: 0,
+      base64Mode: "encode",
+      base64File: null,
+      base64Bytes: null,
+      base64RunId: 0,
+      base64Debounce: 0,
       pdfjs: null,
       lameReady: null,
       directoryHandle: null,
@@ -1766,7 +1825,7 @@
         deleteReminder: true,
         autoCopyShortUrl: true
       },
-      version: "0.32"
+      version: "0.33"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1860,6 +1919,16 @@
       chooseHashFileBtn: $("#chooseHashFileBtn"),
       copyHashBtn: $("#copyHashBtn"),
       saveHashBtn: $("#saveHashBtn"),
+      base64Input: $("#base64Input"),
+      base64Output: $("#base64Output"),
+      base64Filename: $("#base64Filename"),
+      base64FileInput: $("#base64FileInput"),
+      base64Zone: $("#base64Zone"),
+      base64FileList: $("#base64FileList"),
+      base64Status: $("#base64Status"),
+      chooseBase64FileBtn: $("#chooseBase64FileBtn"),
+      copyBase64Btn: $("#copyBase64Btn"),
+      saveBase64Btn: $("#saveBase64Btn"),
       chromeSettingsBtn: $("#chromeSettingsBtn"),
       windowsSettingsBtn: $("#windowsSettingsBtn"),
       settingsStatus: $("#settingsStatus"),
@@ -4593,6 +4662,209 @@
       setStatus(els.hashStatus, "해시 결과 TXT를 저장했습니다.", "ok");
     }
 
+    function setBase64Output(value = "") {
+      els.base64Output.value = value;
+    }
+
+    function normalizeBase64Input(value) {
+      const trimmed = value.trim();
+      const payload = /^data:[^,]*,/i.test(trimmed) ? trimmed.slice(trimmed.indexOf(",") + 1) : trimmed;
+      const compact = payload.replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
+      if (compact.length % 4 === 1) {
+        throw new Error("Base64 길이가 올바르지 않습니다.");
+      }
+      const padding = (4 - (compact.length % 4)) % 4;
+      return `${compact}${"=".repeat(padding)}`;
+    }
+
+    function safeBase64Filename(name) {
+      const cleaned = (name || "decoded.bin")
+        .replace(/[<>:"/\\|?*\x00-\x1f]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim();
+      return cleaned && cleaned !== "." && cleaned !== ".." ? cleaned : "decoded.bin";
+    }
+
+    function tryDecodeUtf8(bytes) {
+      if (!bytes.length) {
+        return "";
+      }
+      try {
+        return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      } catch (error) {
+        return new TextDecoder("utf-8").decode(bytes);
+      }
+    }
+
+    function renderBase64FileList() {
+      els.base64FileList.replaceChildren();
+      if (!app.base64File) {
+        return;
+      }
+
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "converter-file-row done";
+
+      const textWrap = document.createElement("span");
+      textWrap.className = "converter-file-text";
+      const name = document.createElement("span");
+      name.className = "converter-file-name";
+      name.textContent = app.base64File.name;
+      const meta = document.createElement("span");
+      meta.className = "converter-file-meta";
+      meta.textContent = `${formatBytes(app.base64File.size)} · ${app.base64File.type || "알 수 없음"}`;
+      textWrap.append(name, meta);
+
+      const state = document.createElement("span");
+      state.className = "converter-file-state";
+      state.textContent = "인코딩";
+      row.append(textWrap, state);
+      els.base64FileList.appendChild(row);
+    }
+
+    function resetBase64File() {
+      app.base64RunId += 1;
+      app.base64File = null;
+      els.base64FileInput.value = "";
+      renderBase64FileList();
+    }
+
+    function setBase64Mode(mode, keepOutput = false) {
+      app.base64Mode = mode === "decode" ? "decode" : "encode";
+      document.querySelectorAll('[data-segment-group="base64Mode"] .segment').forEach((segment) => {
+        segment.classList.toggle("active", segment.dataset.value === app.base64Mode);
+      });
+
+      const isDecode = app.base64Mode === "decode";
+      els.base64Input.placeholder = isDecode
+        ? "Base64 또는 data URL을 붙여넣으면 디코딩합니다."
+        : "텍스트를 입력하면 Base64로 인코딩합니다. 파일 선택도 가능합니다.";
+      els.base64Output.placeholder = isDecode ? "디코딩된 텍스트 미리보기" : "Base64 결과";
+      els.base64Filename.disabled = !isDecode;
+      if (!keepOutput) {
+        app.base64Bytes = null;
+        setBase64Output("");
+      }
+    }
+
+    function queueBase64Convert() {
+      window.clearTimeout(app.base64Debounce);
+      app.base64Debounce = window.setTimeout(() => {
+        computeBase64();
+      }, 180);
+    }
+
+    async function computeBase64() {
+      const runId = app.base64RunId + 1;
+      app.base64RunId = runId;
+      app.base64Bytes = null;
+
+      if (app.base64Mode === "encode") {
+        if (app.base64File) {
+          setStatus(els.base64Status, `${app.base64File.name} Base64 인코딩 중`, "warn");
+          try {
+            const buffer = await app.base64File.arrayBuffer();
+            if (runId !== app.base64RunId) {
+              return;
+            }
+            const encoded = bytesToBase64(new Uint8Array(buffer));
+            setBase64Output(encoded);
+            setStatus(els.base64Status, `파일을 Base64로 인코딩했습니다. (${formatBytes(buffer.byteLength)})`, "ok");
+          } catch (error) {
+            if (runId === app.base64RunId) {
+              setBase64Output("");
+              setStatus(els.base64Status, error.message || "파일 인코딩에 실패했습니다.", "error");
+            }
+          }
+          return;
+        }
+
+        const value = els.base64Input.value;
+        if (!value) {
+          setBase64Output("");
+          setStatus(els.base64Status, "텍스트를 입력하거나 파일을 선택하세요.");
+          return;
+        }
+        const encoded = bytesToBase64(new TextEncoder().encode(value));
+        setBase64Output(encoded);
+        setStatus(els.base64Status, "텍스트를 Base64로 인코딩했습니다.", "ok");
+        return;
+      }
+
+      const raw = els.base64Input.value;
+      if (!raw.trim()) {
+        setBase64Output("");
+        setStatus(els.base64Status, "Base64 텍스트를 입력하세요.");
+        return;
+      }
+
+      try {
+        const bytes = base64ToBytes(normalizeBase64Input(raw));
+        app.base64Bytes = bytes;
+        setBase64Output(tryDecodeUtf8(bytes));
+        setStatus(els.base64Status, `Base64를 디코딩했습니다. (${formatBytes(bytes.byteLength)})`, "ok");
+      } catch (error) {
+        app.base64Bytes = null;
+        setBase64Output("");
+        setStatus(els.base64Status, error.message || "Base64 디코딩에 실패했습니다.", "error");
+      }
+    }
+
+    function selectBase64File(fileList) {
+      const file = Array.from(fileList || []).find(Boolean);
+      if (!file) {
+        return;
+      }
+
+      app.base64File = file;
+      app.base64Bytes = null;
+      els.base64Input.value = "";
+      setBase64Mode("encode", true);
+      renderBase64FileList();
+      computeBase64();
+    }
+
+    async function copyBase64Output() {
+      try {
+        await copyText(els.base64Output.value);
+        setStatus(els.base64Status, "Base64 결과를 복사했습니다.", "ok");
+      } catch (error) {
+        setStatus(els.base64Status, error.message, "warn");
+      }
+    }
+
+    function saveBase64Output() {
+      if (app.base64Mode === "decode" && app.base64Bytes) {
+        const blob = new Blob([app.base64Bytes], { type: "application/octet-stream" });
+        downloadBlob(blob, safeBase64Filename(els.base64Filename.value));
+        setStatus(els.base64Status, "디코딩 파일을 저장했습니다.", "ok");
+        return;
+      }
+
+      if (!els.base64Output.value.trim()) {
+        setStatus(els.base64Status, "저장할 Base64 결과가 없습니다.", "warn");
+        return;
+      }
+
+      const sourceName = app.base64File ? sanitizeFilename(app.base64File.name) : "base64-text";
+      const blob = new Blob([els.base64Output.value], { type: "text/plain;charset=utf-8" });
+      downloadBlob(blob, `${sourceName || "base64-text"}.b64.txt`);
+      setStatus(els.base64Status, "Base64 텍스트를 저장했습니다.", "ok");
+    }
+
+    function resetBase64State() {
+      window.clearTimeout(app.base64Debounce);
+      app.base64Mode = "encode";
+      app.base64Bytes = null;
+      resetBase64File();
+      els.base64Input.value = "";
+      els.base64Filename.value = "decoded.bin";
+      setBase64Output("");
+      setBase64Mode("encode", true);
+      setStatus(els.base64Status, "텍스트를 입력하거나 파일을 선택하세요.");
+    }
+
     function openChromeSettings() {
       const opened = window.open("chrome://settings/defaultBrowser", "_blank", "noopener,noreferrer");
       setStatus(
@@ -4643,6 +4915,7 @@
       els.hashAlgorithm.value = "SHA-256";
       setHashOutput("");
       setStatus(els.hashStatus, "텍스트를 입력하거나 파일을 선택하세요.");
+      resetBase64State();
       updateQr();
       setStatus(els.settingsStatus, "입력을 초기화했습니다.", "ok");
     }
@@ -4662,6 +4935,12 @@
       if (groupName === "qrTheme") {
         app.qrTheme = button.dataset.value;
         updateQr();
+      }
+
+      if (groupName === "base64Mode") {
+        resetBase64File();
+        setBase64Mode(button.dataset.value);
+        computeBase64();
       }
     }
 
@@ -4891,6 +5170,37 @@
       els.copyHashBtn.addEventListener("click", copyHashOutput);
       els.saveHashBtn.addEventListener("click", saveHashOutput);
 
+      els.base64Input.addEventListener("input", () => {
+        if (app.base64File) {
+          resetBase64File();
+        }
+        queueBase64Convert();
+      });
+      els.chooseBase64FileBtn.addEventListener("click", () => els.base64FileInput.click());
+      els.base64FileInput.addEventListener("change", () => selectBase64File(els.base64FileInput.files));
+      ["dragenter", "dragover"].forEach((eventName) => {
+        els.base64Zone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          els.base64Zone.classList.add("active");
+        });
+      });
+      ["dragleave", "drop"].forEach((eventName) => {
+        els.base64Zone.addEventListener(eventName, () => els.base64Zone.classList.remove("active"));
+      });
+      els.base64Zone.addEventListener("click", () => els.base64FileInput.click());
+      els.base64Zone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          els.base64FileInput.click();
+        }
+      });
+      els.base64Zone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        selectBase64File(event.dataTransfer.files);
+      });
+      els.copyBase64Btn.addEventListener("click", copyBase64Output);
+      els.saveBase64Btn.addEventListener("click", saveBase64Output);
+
       els.chromeSettingsBtn.addEventListener("click", openChromeSettings);
       els.windowsSettingsBtn.addEventListener("click", openWindowsSettings);
       els.resetAppBtn.addEventListener("click", resetApp);
@@ -4907,6 +5217,7 @@
       els.resizeQualityValue.textContent = `${els.resizeQuality.value}%`;
       setPdfActivity("", "대기 중");
       els.pdfQualityValue.textContent = `${els.pdfQuality.value}%`;
+      setBase64Mode(app.base64Mode, true);
       updateQr();
       els.globalStatus.textContent = "모든 도구가 준비됨";
       if (window.lucide) {
