@@ -13,6 +13,7 @@ A single-file browser utility app with a polished translucent glass interface.
 - Batch image resize and compression with JPG, WebP, and PNG output
 - Batch image metadata cleanup with JPG, WebP, PNG, and ZIP export
 - Automatic ZIP bundling when PNG, resized-image, or cleaned-image tools produce multiple output files
+- Automatic prefixed output names with an optional browser-granted save folder
 - Image-to-PDF generation for multiple JPG, PNG, WebP, GIF, BMP, AVIF, and SVG files
 - Batch audio and video to MP3 conversion with ZIP bundling for multiple outputs
 - Quick links for browser and Windows default-app settings

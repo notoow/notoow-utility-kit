@@ -1797,6 +1797,20 @@
               <i data-lucide="monitor-cog" stroke-width="2" width="16" height="16"></i>
               Windows 설정
             </button>
+            <button class="ios-btn" id="chooseOutputFolderBtn" type="button">
+              <i data-lucide="folder-open" stroke-width="2" width="16" height="16"></i>
+              자동 저장 폴더
+            </button>
+            <div class="setting-row">
+              <label class="setting-label" for="autoSaveToggle">
+                변환 완료 즉시 저장
+                <span id="outputFolderState">폴더 미선택 시 다운로드</span>
+              </label>
+              <label class="switch">
+                <input id="autoSaveToggle" type="checkbox" checked>
+                <span class="switch-track"></span>
+              </label>
+            </div>
             <div class="setting-row">
               <label class="setting-label" for="deleteReminderToggle">
                 원본 정리 알림
@@ -1831,7 +1845,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.34</span>
+      <span>notoow Utility Kit v0.35</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1899,9 +1913,10 @@
       directoryHandle: null,
       settings: {
         deleteReminder: true,
-        autoCopyShortUrl: true
+        autoCopyShortUrl: true,
+        autoSaveOutputs: true
       },
-      version: "0.34"
+      version: "0.35"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2018,6 +2033,9 @@
       chooseBase64FileBtn: $("#chooseBase64FileBtn"),
       copyBase64Btn: $("#copyBase64Btn"),
       saveBase64Btn: $("#saveBase64Btn"),
+      chooseOutputFolderBtn: $("#chooseOutputFolderBtn"),
+      outputFolderState: $("#outputFolderState"),
+      autoSaveToggle: $("#autoSaveToggle"),
       chromeSettingsBtn: $("#chromeSettingsBtn"),
       windowsSettingsBtn: $("#windowsSettingsBtn"),
       settingsStatus: $("#settingsStatus"),
@@ -2039,15 +2057,17 @@
         const saved = JSON.parse(window.localStorage?.getItem(SETTINGS_KEY) || "{}");
         app.settings = { ...app.settings, ...saved };
       } catch (error) {
-        app.settings = { deleteReminder: true, autoCopyShortUrl: true };
+        app.settings = { deleteReminder: true, autoCopyShortUrl: true, autoSaveOutputs: true };
       }
       els.deleteReminderToggle.checked = Boolean(app.settings.deleteReminder);
       els.autoCopyToggle.checked = Boolean(app.settings.autoCopyShortUrl);
+      els.autoSaveToggle.checked = app.settings.autoSaveOutputs !== false;
     }
 
     function saveSettings() {
       app.settings.deleteReminder = els.deleteReminderToggle.checked;
       app.settings.autoCopyShortUrl = els.autoCopyToggle.checked;
+      app.settings.autoSaveOutputs = els.autoSaveToggle.checked;
       try {
         window.localStorage?.setItem(SETTINGS_KEY, JSON.stringify(app.settings));
         setStatus(els.settingsStatus, "설정을 저장했습니다.", "ok");
@@ -2156,6 +2176,36 @@
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1200);
+    }
+
+    const OUTPUT_PREFIX = "notoow-";
+
+    function safeOutputFilename(name, fallback = "output") {
+      return (name || fallback)
+        .replace(/[<>:"/\\|?*\x00-\x1f]/g, "-")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "") || fallback;
+    }
+
+    function withOutputPrefix(name, fallback = "output") {
+      const safeName = safeOutputFilename(name, fallback);
+      return safeName.toLowerCase().startsWith(OUTPUT_PREFIX) ? safeName : `${OUTPUT_PREFIX}${safeName}`;
+    }
+
+    function updateOutputFolderLabel() {
+      const label = app.directoryHandle
+        ? `${app.directoryHandle.name} · ${OUTPUT_PREFIX}`
+        : `폴더 미선택 시 다운로드 · ${OUTPUT_PREFIX}`;
+      els.folderState.textContent = label;
+      els.outputFolderState.textContent = label;
+    }
+
+    async function writeBlobToOutputFolder(blob, filename) {
+      const handle = await app.directoryHandle.getFileHandle(filename, { create: true });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
     }
 
     const ZIP_CRC_TABLE = (() => {
@@ -2274,14 +2324,56 @@
     }
 
     async function downloadEntries(entries, archiveName) {
-      if (entries.length === 1) {
-        downloadBlob(entries[0].blob, entries[0].name);
-        return { mode: "single", size: entries[0].blob.size };
+      const outputEntries = entries.map((entry, index) => ({
+        ...entry,
+        name: withOutputPrefix(entry.name, `output-${index + 1}`)
+      }));
+
+      if (outputEntries.length === 1) {
+        const entry = outputEntries[0];
+        if (app.directoryHandle) {
+          await writeBlobToOutputFolder(entry.blob, entry.name);
+          return { mode: "single", target: "folder", name: entry.name, size: entry.blob.size };
+        }
+        downloadBlob(entry.blob, entry.name);
+        return { mode: "single", target: "download", name: entry.name, size: entry.blob.size };
       }
 
-      const zipBlob = await createZipBlob(entries);
-      downloadBlob(zipBlob, archiveName);
-      return { mode: "zip", size: zipBlob.size };
+      const zipBlob = await createZipBlob(outputEntries);
+      const outputArchiveName = withOutputPrefix(archiveName, `outputs-${Date.now()}.zip`);
+      if (app.directoryHandle) {
+        await writeBlobToOutputFolder(zipBlob, outputArchiveName);
+        return { mode: "zip", target: "folder", name: outputArchiveName, size: zipBlob.size };
+      }
+      downloadBlob(zipBlob, outputArchiveName);
+      return { mode: "zip", target: "download", name: outputArchiveName, size: zipBlob.size };
+    }
+
+    function savedTargetLabel(saved) {
+      return saved.target === "folder" ? "자동 저장 폴더" : "다운로드";
+    }
+
+    function savedResultMessage(saved, singleLabel = "파일") {
+      const target = savedTargetLabel(saved);
+      if (saved.mode === "zip") {
+        return `${saved.name} ZIP을 ${target}에 저장했습니다. (${formatBytes(saved.size)})`;
+      }
+      return `${saved.name} ${singleLabel}을 ${target}에 저장했습니다.`;
+    }
+
+    async function autoSaveEntries(entries, archiveName, statusElement, singleLabel = "파일") {
+      if (!app.settings.autoSaveOutputs || !entries.length) {
+        return null;
+      }
+
+      try {
+        const saved = await downloadEntries(entries, archiveName);
+        setStatus(statusElement, `변환 완료 즉시 ${savedResultMessage(saved, singleLabel)}`, "ok");
+        return saved;
+      } catch (error) {
+        setStatus(statusElement, error.message || "자동 저장에 실패했습니다.", "warn");
+        return null;
+      }
     }
 
     async function copyText(text) {
@@ -2608,7 +2700,7 @@
           setStatus(els.fileStatus, `${completed}개 처리, ${failed}개 실패. 결과를 저장했습니다.`, "warn");
         } else {
           const actionText = app.fileMode === "encrypt" ? "암호화" : "복호화";
-          const saveText = saved.mode === "zip" ? `ZIP으로 저장했습니다. (${formatBytes(saved.size)})` : "파일을 저장했습니다.";
+          const saveText = savedResultMessage(saved, "파일");
           setStatus(els.fileStatus, completionMessage(`${completed}개 파일 ${actionText} 완료, ${saveText}`), "ok");
         }
       } catch (error) {
@@ -2751,7 +2843,7 @@
           setStatus(els.qrStatus, "QR 이미지 생성에 실패했습니다.", "error");
           return;
         }
-        downloadBlob(blob, `qr-${Date.now()}.png`);
+        downloadBlob(blob, withOutputPrefix(`qr-${Date.now()}.png`));
         setStatus(els.qrStatus, "QR 이미지를 저장했습니다.", "ok");
       }, "image/png");
     }
@@ -3135,6 +3227,16 @@
       } else {
         setConverterActivity("done", `${outputCount}개 PNG${skipped}`);
         setStatus(els.converterStatus, `${outputCount}개 PNG 변환 완료${skipped}`, "ok");
+        const convertedOutputs = app.converterItems
+          .filter((item) => item.status === "done")
+          .flatMap((item) => getConverterOutputs(item))
+          .filter((output) => output.blob);
+        await autoSaveEntries(
+          convertedOutputs.map((output) => ({ name: output.outputName, blob: output.blob })),
+          `png-results-${Date.now()}.zip`,
+          els.converterStatus,
+          "PNG"
+        );
       }
     }
 
@@ -3189,20 +3291,24 @@
       await selectConverterFiles(files);
     }
 
-    async function chooseFolder() {
+    async function chooseOutputFolder(statusElement = els.settingsStatus) {
       if (!window.showDirectoryPicker) {
-        setStatus(els.converterStatus, "이 브라우저는 폴더 직접 저장을 지원하지 않습니다.", "warn");
+        setStatus(statusElement, "이 브라우저는 폴더 직접 저장을 지원하지 않습니다.", "warn");
         return;
       }
       try {
         app.directoryHandle = await window.showDirectoryPicker();
-        els.folderState.textContent = app.directoryHandle.name;
-        setStatus(els.converterStatus, "저장 폴더가 선택됨", "ok");
+        updateOutputFolderLabel();
+        setStatus(statusElement, `${app.directoryHandle.name} 폴더에 ${OUTPUT_PREFIX} 접두사로 자동 저장합니다.`, "ok");
       } catch (error) {
         if (error.name !== "AbortError") {
-          setStatus(els.converterStatus, "폴더 선택에 실패했습니다.", "error");
+          setStatus(statusElement, "폴더 선택에 실패했습니다.", "error");
         }
       }
+    }
+
+    function chooseFolder() {
+      chooseOutputFolder(els.converterStatus);
     }
 
     async function saveConvertedPng() {
@@ -3217,27 +3323,11 @@
       }
 
       try {
-        if (app.directoryHandle) {
-          for (const output of convertedOutputs) {
-            const handle = await app.directoryHandle.getFileHandle(output.outputName, { create: true });
-            const writable = await handle.createWritable();
-            await writable.write(output.blob);
-            await writable.close();
-          }
-          setStatus(els.converterStatus, `${convertedOutputs.length}개 PNG 저장 완료`, "ok");
-        } else {
-          const saved = await downloadEntries(
-            convertedOutputs.map((output) => ({ name: output.outputName, blob: output.blob })),
-            `png-results-${Date.now()}.zip`
-          );
-          setStatus(
-            els.converterStatus,
-            saved.mode === "zip"
-              ? `${convertedOutputs.length}개 PNG를 ZIP으로 저장했습니다. (${formatBytes(saved.size)})`
-              : "PNG 파일을 저장했습니다.",
-            "ok"
-          );
-        }
+        const saved = await downloadEntries(
+          convertedOutputs.map((output) => ({ name: output.outputName, blob: output.blob })),
+          `png-results-${Date.now()}.zip`
+        );
+        setStatus(els.converterStatus, savedResultMessage(saved, "PNG"), "ok");
       } catch (error) {
         setStatus(els.converterStatus, error.message || "PNG 저장에 실패했습니다.", "error");
       }
@@ -3510,6 +3600,13 @@
       } else {
         setResizeActivity("done", `${completed}개 완료${skipped}`);
         setStatus(els.resizeStatus, `${completed}개 이미지 처리 완료${skipped}`, "ok");
+        const resizedItems = app.resizeItems.filter((item) => item.status === "done" && item.blob);
+        await autoSaveEntries(
+          resizedItems.map((item) => ({ name: item.outputName, blob: item.blob })),
+          `resized-images-${Date.now()}.zip`,
+          els.resizeStatus,
+          "이미지"
+        );
       }
     }
 
@@ -3592,13 +3689,7 @@
           resizedItems.map((item) => ({ name: item.outputName, blob: item.blob })),
           `resized-images-${Date.now()}.zip`
         );
-        setStatus(
-          els.resizeStatus,
-          saved.mode === "zip"
-            ? `${resizedItems.length}개 이미지를 ZIP으로 저장했습니다. (${formatBytes(saved.size)})`
-            : "이미지 파일을 저장했습니다.",
-          "ok"
-        );
+        setStatus(els.resizeStatus, savedResultMessage(saved, "이미지"), "ok");
       } catch (error) {
         setStatus(els.resizeStatus, error.message || "이미지 저장에 실패했습니다.", "error");
       }
@@ -3810,6 +3901,13 @@
       } else {
         setCleanActivity("done", `${completed}개 클린${skipped}`);
         setStatus(els.cleanStatus, `${completed}개 이미지 메타데이터 제거 완료${skipped}`, "ok");
+        const cleanItems = app.cleanItems.filter((item) => item.status === "done" && item.blob);
+        await autoSaveEntries(
+          cleanItems.map((item) => ({ name: item.outputName, blob: item.blob })),
+          `clean-images-${Date.now()}.zip`,
+          els.cleanStatus,
+          "클린 이미지"
+        );
       }
     }
 
@@ -3891,13 +3989,7 @@
           cleanItems.map((item) => ({ name: item.outputName, blob: item.blob })),
           `clean-images-${Date.now()}.zip`
         );
-        setStatus(
-          els.cleanStatus,
-          saved.mode === "zip"
-            ? `${cleanItems.length}개 클린 이미지를 ZIP으로 저장했습니다. (${formatBytes(saved.size)})`
-            : "클린 이미지를 저장했습니다.",
-          "ok"
-        );
+        setStatus(els.cleanStatus, savedResultMessage(saved, "클린 이미지"), "ok");
       } catch (error) {
         setStatus(els.cleanStatus, error.message || "클린 이미지 저장에 실패했습니다.", "error");
       }
@@ -4234,6 +4326,12 @@
       } else {
         setPdfActivity("done", `${completed}개 페이지`);
         setStatus(els.pdfStatus, `${completed}개 이미지 PDF 생성 완료 (${formatBytes(app.pdfBlob.size)})${skipped}`, "ok");
+        await autoSaveEntries(
+          [{ name: app.pdfOutputName, blob: app.pdfBlob }],
+          `images-${Date.now()}.pdf`,
+          els.pdfStatus,
+          "PDF"
+        );
       }
     }
 
@@ -4301,14 +4399,21 @@
       await selectPdfFiles(files);
     }
 
-    function savePdf() {
+    async function savePdf() {
       if (!app.pdfBlob) {
         setStatus(els.pdfStatus, "먼저 PDF로 만들 이미지를 선택하세요.", "warn");
         els.pdfZone.focus();
         return;
       }
-      downloadBlob(app.pdfBlob, app.pdfOutputName || `images-${Date.now()}.pdf`);
-      setStatus(els.pdfStatus, "PDF 파일을 저장했습니다.", "ok");
+      try {
+        const saved = await downloadEntries(
+          [{ name: app.pdfOutputName || `images-${Date.now()}.pdf`, blob: app.pdfBlob }],
+          `images-${Date.now()}.pdf`
+        );
+        setStatus(els.pdfStatus, savedResultMessage(saved, "PDF"), "ok");
+      } catch (error) {
+        setStatus(els.pdfStatus, error.message || "PDF 저장에 실패했습니다.", "error");
+      }
     }
 
     const LAMEJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js";
@@ -4838,6 +4943,12 @@
         } else {
           setMp3Activity("done", `${completed}개 MP3`);
           setStatus(els.mp3Status, `${completed}개 MP3 변환 완료`, "ok");
+          await autoSaveEntries(
+            convertedItems.map((item) => ({ name: item.outputName, blob: item.blob })),
+            `mp3-results-${Date.now()}.zip`,
+            els.mp3Status,
+            "MP3"
+          );
         }
       } finally {
         app.mp3Processing = false;
@@ -4857,13 +4968,7 @@
           convertedItems.map((item) => ({ name: item.outputName, blob: item.blob })),
           `mp3-results-${Date.now()}.zip`
         );
-        setStatus(
-          els.mp3Status,
-          saved.mode === "zip"
-            ? `${convertedItems.length}개 MP3를 ZIP으로 저장했습니다. (${formatBytes(saved.size)})`
-            : "MP3 파일을 저장했습니다.",
-          "ok"
-        );
+        setStatus(els.mp3Status, savedResultMessage(saved, "MP3"), "ok");
       } catch (error) {
         setStatus(els.mp3Status, error.message || "MP3 저장에 실패했습니다.", "error");
       }
@@ -5046,7 +5151,7 @@
         return;
       }
       const blob = new Blob([els.hashOutput.value], { type: "text/plain;charset=utf-8" });
-      downloadBlob(blob, `checksums-${Date.now()}.txt`);
+      downloadBlob(blob, withOutputPrefix(`checksums-${Date.now()}.txt`));
       setStatus(els.hashStatus, "해시 결과 TXT를 저장했습니다.", "ok");
     }
 
@@ -5159,6 +5264,12 @@
             const encoded = bytesToBase64(new Uint8Array(buffer));
             setBase64Output(encoded);
             setStatus(els.base64Status, `파일을 Base64로 인코딩했습니다. (${formatBytes(buffer.byteLength)})`, "ok");
+            await autoSaveEntries(
+              [{ name: `${sanitizeFilename(app.base64File.name) || "base64-file"}.b64.txt`, blob: new Blob([encoded], { type: "text/plain;charset=utf-8" }) }],
+              `base64-results-${Date.now()}.zip`,
+              els.base64Status,
+              "Base64"
+            );
           } catch (error) {
             if (runId === app.base64RunId) {
               setBase64Output("");
@@ -5222,11 +5333,15 @@
       }
     }
 
-    function saveBase64Output() {
+    async function saveBase64Output() {
       if (app.base64Mode === "decode" && app.base64Bytes) {
         const blob = new Blob([app.base64Bytes], { type: "application/octet-stream" });
-        downloadBlob(blob, safeBase64Filename(els.base64Filename.value));
-        setStatus(els.base64Status, "디코딩 파일을 저장했습니다.", "ok");
+        try {
+          const saved = await downloadEntries([{ name: safeBase64Filename(els.base64Filename.value), blob }], `base64-decoded-${Date.now()}.zip`);
+          setStatus(els.base64Status, savedResultMessage(saved, "디코딩 파일"), "ok");
+        } catch (error) {
+          setStatus(els.base64Status, error.message || "디코딩 파일 저장에 실패했습니다.", "error");
+        }
         return;
       }
 
@@ -5237,8 +5352,12 @@
 
       const sourceName = app.base64File ? sanitizeFilename(app.base64File.name) : "base64-text";
       const blob = new Blob([els.base64Output.value], { type: "text/plain;charset=utf-8" });
-      downloadBlob(blob, `${sourceName || "base64-text"}.b64.txt`);
-      setStatus(els.base64Status, "Base64 텍스트를 저장했습니다.", "ok");
+      try {
+        const saved = await downloadEntries([{ name: `${sourceName || "base64-text"}.b64.txt`, blob }], `base64-results-${Date.now()}.zip`);
+        setStatus(els.base64Status, savedResultMessage(saved, "Base64"), "ok");
+      } catch (error) {
+        setStatus(els.base64Status, error.message || "Base64 저장에 실패했습니다.", "error");
+      }
     }
 
     function resetBase64State() {
@@ -5629,9 +5748,11 @@
 
       els.chromeSettingsBtn.addEventListener("click", openChromeSettings);
       els.windowsSettingsBtn.addEventListener("click", openWindowsSettings);
+      els.chooseOutputFolderBtn.addEventListener("click", () => chooseOutputFolder(els.settingsStatus));
       els.resetAppBtn.addEventListener("click", resetApp);
       els.deleteReminderToggle.addEventListener("change", saveSettings);
       els.autoCopyToggle.addEventListener("change", saveSettings);
+      els.autoSaveToggle.addEventListener("change", saveSettings);
     }
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -5646,6 +5767,7 @@
       setPdfActivity("", "대기 중");
       els.pdfQualityValue.textContent = `${els.pdfQuality.value}%`;
       setBase64Mode(app.base64Mode, true);
+      updateOutputFolderLabel();
       updateQr();
       els.globalStatus.textContent = "모든 도구가 준비됨";
       if (window.lucide) {
