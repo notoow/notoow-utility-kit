@@ -1232,6 +1232,54 @@
 
     <section class="utility-panel liquid" data-liquid aria-label="유틸리티 도구">
       <div class="widget-grid">
+        <article class="widget liquid" data-liquid aria-labelledby="converterTitle">
+          <div class="widget-header">
+            <div class="icon-box purple">
+              <i data-lucide="file-image" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="converterTitle">PNG 변환기</strong>
+              <span id="folderState">1번 도구 · 비-PNG 이미지를 PNG로</span>
+            </div>
+          </div>
+
+          <input class="hidden-input" id="converterInput" type="file" multiple accept="image/*,application/pdf,.jpg,.jpeg,.jpe,.jfif,.pjpeg,.pjp,.webp,.gif,.bmp,.dib,.avif,.svg,.svgz,.heic,.heif,.tif,.tiff,.ico,.cur,.apng,.jxl,.jp2,.j2k,.jpf,.jpx,.jpm,.mj2,.dds,.tga,.icns,.qoi,.pnm,.pbm,.pgm,.ppm,.pam,.psd,.psb,.ras,.sgi,.exr,.hdr,.pic,.pcx,.xbm,.xpm,.emf,.wmf,.raw,.arw,.cr2,.cr3,.nef,.nrw,.orf,.rw2,.raf,.dng,.sr2,.srf,.pef,.iiq,.3fr,.kdc,.erf,.mef,.mos,.mrw,.ari,.pdf">
+          <div class="paste-zone converter-zone" id="converterZone" tabindex="0">
+            <div class="converter-drop-head">
+              <div>
+                <strong>PNG가 아닌 이미지를 놓거나 선택</strong>
+                <span>AVIF HEIC WebP JPG SVG TIFF RAW 등 비-PNG 이미지와 PDF</span>
+              </div>
+              <i data-lucide="upload-cloud" stroke-width="2" width="20" height="20"></i>
+            </div>
+            <div class="converter-file-list" id="converterFileList" aria-live="polite"></div>
+          </div>
+          <div class="converter-activity" id="converterActivity" aria-live="polite">
+            <span class="converter-spinner" aria-hidden="true"></span>
+            <span id="converterActivityText">대기 중</span>
+          </div>
+          <div class="preview-box" id="previewBox">
+            <span class="preview-empty">미리보기 없음</span>
+            <img id="converterPreview" alt="변환된 PNG 미리보기">
+          </div>
+
+          <p class="status" id="converterStatus" aria-live="polite">PNG가 아닌 이미지 파일을 선택하면 PNG 변환을 시작합니다. PDF 전체 페이지와 여러 결과는 ZIP으로 저장합니다.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="chooseConvertFileBtn" type="button">
+              <i data-lucide="upload" stroke-width="2" width="16" height="16"></i>
+              파일 선택
+            </button>
+            <button class="ios-btn" id="chooseFolderBtn" type="button">
+              <i data-lucide="folder-open" stroke-width="2" width="16" height="16"></i>
+              폴더 선택
+            </button>
+            <button class="ios-btn primary" id="saveConvertedBtn" type="button">
+              <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
+              PNG 저장
+            </button>
+          </div>
+        </article>
+
         <article class="widget liquid" data-liquid aria-labelledby="fileTitle">
           <div class="widget-header">
             <div class="icon-box orange">
@@ -1365,54 +1413,6 @@
             <div class="qr-box">
               <canvas id="qrCanvas" width="164" height="164" aria-label="생성된 QR 코드"></canvas>
             </div>
-          </div>
-        </article>
-
-        <article class="widget liquid" data-liquid aria-labelledby="converterTitle">
-          <div class="widget-header">
-            <div class="icon-box purple">
-              <i data-lucide="file-image" stroke-width="2.5" width="20" height="20"></i>
-            </div>
-            <div class="widget-title">
-              <strong id="converterTitle">PNG 변환기</strong>
-              <span id="folderState">PDF 전 페이지 지원</span>
-            </div>
-          </div>
-
-          <input class="hidden-input" id="converterInput" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,application/pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg,.pdf">
-          <div class="paste-zone converter-zone" id="converterZone" tabindex="0">
-            <div class="converter-drop-head">
-              <div>
-                <strong>파일을 놓거나 선택</strong>
-                <span>SVG JPG WEBP PDF 전체 페이지</span>
-              </div>
-              <i data-lucide="upload-cloud" stroke-width="2" width="20" height="20"></i>
-            </div>
-            <div class="converter-file-list" id="converterFileList" aria-live="polite"></div>
-          </div>
-          <div class="converter-activity" id="converterActivity" aria-live="polite">
-            <span class="converter-spinner" aria-hidden="true"></span>
-            <span id="converterActivityText">대기 중</span>
-          </div>
-          <div class="preview-box" id="previewBox">
-            <span class="preview-empty">미리보기 없음</span>
-            <img id="converterPreview" alt="변환된 PNG 미리보기">
-          </div>
-
-          <p class="status" id="converterStatus" aria-live="polite">파일을 선택하면 PNG 변환을 시작합니다. PDF 전체 페이지와 여러 결과는 ZIP으로 저장합니다.</p>
-          <div class="action-row">
-            <button class="ios-btn" id="chooseConvertFileBtn" type="button">
-              <i data-lucide="upload" stroke-width="2" width="16" height="16"></i>
-              파일 선택
-            </button>
-            <button class="ios-btn" id="chooseFolderBtn" type="button">
-              <i data-lucide="folder-open" stroke-width="2" width="16" height="16"></i>
-              폴더 선택
-            </button>
-            <button class="ios-btn primary" id="saveConvertedBtn" type="button">
-              <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
-              PNG 저장
-            </button>
           </div>
         </article>
 
@@ -1845,7 +1845,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.35</span>
+      <span>notoow Utility Kit v0.36</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1916,7 +1916,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.35"
+      version: "0.36"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2851,7 +2851,6 @@
     const PDFJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
     const PDFJS_WORKER_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
     const SUPPORTED_CONVERTER_TYPES = new Set([
-      "image/png",
       "image/jpeg",
       "image/webp",
       "image/gif",
@@ -2859,6 +2858,76 @@
       "image/avif",
       "image/svg+xml",
       "application/pdf"
+    ]);
+    const NON_PNG_IMAGE_EXTENSIONS = new Set([
+      "jpg",
+      "jpeg",
+      "jpe",
+      "jfif",
+      "pjpeg",
+      "pjp",
+      "webp",
+      "gif",
+      "bmp",
+      "dib",
+      "avif",
+      "svg",
+      "heic",
+      "heif",
+      "tif",
+      "tiff",
+      "ico",
+      "cur",
+      "apng",
+      "jxl",
+      "jp2",
+      "j2k",
+      "jpf",
+      "jpx",
+      "jpm",
+      "mj2",
+      "dds",
+      "tga",
+      "icns",
+      "qoi",
+      "pnm",
+      "pbm",
+      "pgm",
+      "ppm",
+      "pam",
+      "psd",
+      "psb",
+      "ras",
+      "sgi",
+      "exr",
+      "hdr",
+      "pic",
+      "pcx",
+      "xbm",
+      "xpm",
+      "emf",
+      "wmf",
+      "raw",
+      "arw",
+      "cr2",
+      "cr3",
+      "nef",
+      "nrw",
+      "orf",
+      "rw2",
+      "raf",
+      "dng",
+      "sr2",
+      "srf",
+      "pef",
+      "iiq",
+      "3fr",
+      "kdc",
+      "erf",
+      "mef",
+      "mos",
+      "mrw",
+      "ari"
     ]);
     const SUPPORTED_RESIZE_TYPES = new Set([
       "image/png",
@@ -2885,7 +2954,13 @@
 
     function isSupportedConverterFile(file) {
       const extension = converterExtension(file);
-      return SUPPORTED_CONVERTER_TYPES.has(file.type) || ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "svg", "pdf"].includes(extension);
+      if (isPdfFile(file)) {
+        return true;
+      }
+      if (extension === "png" || file.type === "image/png") {
+        return false;
+      }
+      return (file.type || "").startsWith("image/") || SUPPORTED_CONVERTER_TYPES.has(file.type) || NON_PNG_IMAGE_EXTENSIONS.has(extension);
     }
 
     function sanitizeFilename(name) {
@@ -3249,7 +3324,7 @@
       const rejectedCount = files.length - supportedFiles.length;
       if (!supportedFiles.length) {
         resetConverterState();
-        setStatus(els.converterStatus, "SVG, JPG, PNG, WebP, GIF, BMP, AVIF, PDF 파일을 지원합니다.", "error");
+        setStatus(els.converterStatus, "PNG가 아닌 이미지와 PDF를 선택하세요. 브라우저가 읽을 수 있는 이미지는 PNG로 변환합니다.", "error");
         return;
       }
 
