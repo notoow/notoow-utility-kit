@@ -1280,6 +1280,99 @@
           </div>
         </article>
 
+        <article class="widget liquid" data-liquid aria-labelledby="mp3Title">
+          <div class="widget-header">
+            <div class="icon-box pink">
+              <i data-lucide="music-4" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="mp3Title">오디오/동영상 MP3 변환</strong>
+              <span>일괄 변환과 ZIP 저장</span>
+            </div>
+          </div>
+
+          <input class="hidden-input" id="mp3Input" type="file" multiple accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.flac,.mp4,.webm,.mov,.m4v,.mkv,.avi">
+          <div class="paste-zone media-zone" id="mp3Zone" tabindex="0">
+            <div>
+              <strong>여러 오디오나 동영상을 놓거나 선택</strong>
+              <span>WAV MP3 M4A MP4 WEBM · 여러 결과는 ZIP</span>
+            </div>
+            <div class="converter-file-list" id="mp3FileList" aria-live="polite"></div>
+          </div>
+          <div class="file-details" id="mp3Details">
+            <strong>변환 대기</strong>
+            <span>브라우저에서 재생 가능한 오디오나 영상의 소리를 MP3로 일괄 저장합니다.</span>
+          </div>
+          <div class="media-activity" id="mp3Activity" aria-live="polite">
+            <span class="converter-spinner" aria-hidden="true"></span>
+            <span id="mp3ActivityText">대기 중</span>
+          </div>
+          <div class="preview-box" id="mp3PreviewBox">
+            <span class="preview-empty">미리보기 없음</span>
+            <video id="mp3VideoPreview" controls playsinline preload="metadata"></video>
+            <audio id="mp3AudioPreview" controls preload="metadata"></audio>
+          </div>
+
+          <p class="status" id="mp3Status" aria-live="polite">오디오나 동영상 파일을 선택하세요. 여러 파일을 한 번에 처리할 수 있습니다.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="chooseMp3FileBtn" type="button">
+              <i data-lucide="film" stroke-width="2" width="16" height="16"></i>
+              파일 선택
+            </button>
+            <button class="ios-btn primary" id="convertMp3Btn" type="button">
+              <i data-lucide="wand-sparkles" stroke-width="2" width="16" height="16"></i>
+              MP3 변환
+            </button>
+            <button class="ios-btn" id="saveMp3Btn" type="button">
+              <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
+              저장
+            </button>
+          </div>
+        </article>
+
+        <article class="widget liquid wide" data-liquid aria-labelledby="qrTitle">
+          <div class="widget-header">
+            <div class="icon-box green">
+              <i data-lucide="qr-code" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="qrTitle">QR 코드 생성</strong>
+              <span>PNG로 저장 가능</span>
+            </div>
+          </div>
+
+          <div class="qr-layout">
+            <div class="input-stack">
+              <input class="ios-input" id="qrInput" type="text" placeholder="https://example.com">
+              <div class="segmented" data-segment-group="qrTheme" role="tablist" aria-label="QR 색상">
+                <button class="segment active" type="button" data-value="black">기본</button>
+                <button class="segment" type="button" data-value="green">녹색</button>
+                <button class="segment" type="button" data-value="blue">청색</button>
+              </div>
+              <div class="setting-row">
+                <label class="setting-label" for="qrInvertToggle">
+                  QR 반전
+                  <span>현재 선택한 색상 조합을 뒤집기</span>
+                </label>
+                <label class="switch">
+                  <input id="qrInvertToggle" type="checkbox">
+                  <span class="switch-track"></span>
+                </label>
+              </div>
+              <p class="status" id="qrStatus" aria-live="polite">텍스트 또는 URL을 입력하세요.</p>
+              <div class="action-row">
+                <button class="ios-btn primary" id="downloadQrBtn" type="button">
+                  <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
+                  이미지 저장
+                </button>
+              </div>
+            </div>
+            <div class="qr-box">
+              <canvas id="qrCanvas" width="164" height="164" aria-label="생성된 QR 코드"></canvas>
+            </div>
+          </div>
+        </article>
+
         <article class="widget liquid" data-liquid aria-labelledby="fileTitle">
           <div class="widget-header">
             <div class="icon-box orange">
@@ -1370,49 +1463,6 @@
               <i data-lucide="external-link" stroke-width="2" width="16" height="16"></i>
               열기
             </button>
-          </div>
-        </article>
-
-        <article class="widget liquid wide" data-liquid aria-labelledby="qrTitle">
-          <div class="widget-header">
-            <div class="icon-box green">
-              <i data-lucide="qr-code" stroke-width="2.5" width="20" height="20"></i>
-            </div>
-            <div class="widget-title">
-              <strong id="qrTitle">QR 코드 생성</strong>
-              <span>PNG로 저장 가능</span>
-            </div>
-          </div>
-
-          <div class="qr-layout">
-            <div class="input-stack">
-              <input class="ios-input" id="qrInput" type="text" placeholder="https://example.com">
-              <div class="segmented" data-segment-group="qrTheme" role="tablist" aria-label="QR 색상">
-                <button class="segment active" type="button" data-value="black">기본</button>
-                <button class="segment" type="button" data-value="green">녹색</button>
-                <button class="segment" type="button" data-value="blue">청색</button>
-              </div>
-              <div class="setting-row">
-                <label class="setting-label" for="qrInvertToggle">
-                  QR 반전
-                  <span>현재 선택한 색상 조합을 뒤집기</span>
-                </label>
-                <label class="switch">
-                  <input id="qrInvertToggle" type="checkbox">
-                  <span class="switch-track"></span>
-                </label>
-              </div>
-              <p class="status" id="qrStatus" aria-live="polite">텍스트 또는 URL을 입력하세요.</p>
-              <div class="action-row">
-                <button class="ios-btn primary" id="downloadQrBtn" type="button">
-                  <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
-                  이미지 저장
-                </button>
-              </div>
-            </div>
-            <div class="qr-box">
-              <canvas id="qrCanvas" width="164" height="164" aria-label="생성된 QR 코드"></canvas>
-            </div>
           </div>
         </article>
 
@@ -1619,56 +1669,6 @@
           </div>
         </article>
 
-        <article class="widget liquid" data-liquid aria-labelledby="mp3Title">
-          <div class="widget-header">
-            <div class="icon-box pink">
-              <i data-lucide="music-4" stroke-width="2.5" width="20" height="20"></i>
-            </div>
-            <div class="widget-title">
-              <strong id="mp3Title">오디오/동영상 MP3 변환</strong>
-              <span>일괄 변환과 ZIP 저장</span>
-            </div>
-          </div>
-
-          <input class="hidden-input" id="mp3Input" type="file" multiple accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.flac,.mp4,.webm,.mov,.m4v,.mkv,.avi">
-          <div class="paste-zone media-zone" id="mp3Zone" tabindex="0">
-            <div>
-              <strong>여러 오디오나 동영상을 놓거나 선택</strong>
-              <span>WAV MP3 M4A MP4 WEBM · 여러 결과는 ZIP</span>
-            </div>
-            <div class="converter-file-list" id="mp3FileList" aria-live="polite"></div>
-          </div>
-          <div class="file-details" id="mp3Details">
-            <strong>변환 대기</strong>
-            <span>브라우저에서 재생 가능한 오디오나 영상의 소리를 MP3로 일괄 저장합니다.</span>
-          </div>
-          <div class="media-activity" id="mp3Activity" aria-live="polite">
-            <span class="converter-spinner" aria-hidden="true"></span>
-            <span id="mp3ActivityText">대기 중</span>
-          </div>
-          <div class="preview-box" id="mp3PreviewBox">
-            <span class="preview-empty">미리보기 없음</span>
-            <video id="mp3VideoPreview" controls playsinline preload="metadata"></video>
-            <audio id="mp3AudioPreview" controls preload="metadata"></audio>
-          </div>
-
-          <p class="status" id="mp3Status" aria-live="polite">오디오나 동영상 파일을 선택하세요. 여러 파일을 한 번에 처리할 수 있습니다.</p>
-          <div class="action-row">
-            <button class="ios-btn" id="chooseMp3FileBtn" type="button">
-              <i data-lucide="film" stroke-width="2" width="16" height="16"></i>
-              파일 선택
-            </button>
-            <button class="ios-btn primary" id="convertMp3Btn" type="button">
-              <i data-lucide="wand-sparkles" stroke-width="2" width="16" height="16"></i>
-              MP3 변환
-            </button>
-            <button class="ios-btn" id="saveMp3Btn" type="button">
-              <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
-              저장
-            </button>
-          </div>
-        </article>
-
         <article class="widget liquid" data-liquid aria-labelledby="hashTitle">
           <div class="widget-header">
             <div class="icon-box green">
@@ -1845,7 +1845,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.36</span>
+      <span>notoow Utility Kit v0.37</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1916,7 +1916,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.36"
+      version: "0.37"
     };
 
     const $ = (selector) => document.querySelector(selector);
