@@ -1293,8 +1293,15 @@
     }
 
     .converter-adjuster:not(.is-adjustable) .ratio-control {
-      opacity: 0.34;
-      pointer-events: none;
+      display: none;
+    }
+
+    .converter-adjuster:not(.is-adjustable) {
+      display: block;
+    }
+
+    .converter-adjuster:not(.is-adjustable) .preview-box {
+      width: 100%;
     }
 
     .hidden-input {
@@ -2213,7 +2220,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.41</span>
+      <span>notoow Utility Kit v0.42</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -2334,7 +2341,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.41"
+      version: "0.42"
     };
 
     const $ = (selector) => document.querySelector(selector);
