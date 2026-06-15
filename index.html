@@ -5262,6 +5262,20 @@
       return `${minutes}:${String(remainder).padStart(2, "0")}`;
     }
 
+    async function handleMp3Paste(event) {
+      const files = Array.from(event.clipboardData?.items || [])
+        .filter((item) => item.kind === "file")
+        .map((item) => item.getAsFile())
+        .filter(Boolean)
+        .filter(isSupportedMp3SourceFile);
+      if (!files.length) {
+        setStatus(els.mp3Status, "붙여넣은 데이터에서 변환 가능한 오디오나 동영상을 찾지 못했습니다.", "warn");
+        return;
+      }
+      event.preventDefault();
+      await selectMp3Files(files);
+    }
+
     function loadScriptOnce(url, globalName) {
       if (globalName && window[globalName]) {
         return Promise.resolve();
@@ -6333,6 +6347,15 @@
 
       els.chooseMp3FileBtn.addEventListener("click", () => els.mp3Input.click());
       els.mp3Input.addEventListener("change", () => selectMp3Files(els.mp3Input.files));
+      els.mp3Zone.addEventListener("paste", handleMp3Paste);
+      document.addEventListener("paste", (event) => {
+        if (event.defaultPrevented) {
+          return;
+        }
+        if (document.activeElement === els.mp3Zone) {
+          handleMp3Paste(event);
+        }
+      });
       els.convertMp3Btn.addEventListener("click", convertMp3Files);
       els.saveMp3Btn.addEventListener("click", saveMp3);
       ["dragenter", "dragover"].forEach((eventName) => {
