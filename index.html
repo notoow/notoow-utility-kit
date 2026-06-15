@@ -1233,6 +1233,70 @@
       display: none;
     }
 
+    .converter-adjuster {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr);
+      grid-template-rows: minmax(150px, auto) auto;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .converter-adjuster .preview-box {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .ratio-control {
+      display: grid;
+      gap: 6px;
+      color: rgba(247, 248, 251, 0.72);
+      font-size: 11px;
+      font-weight: 760;
+      line-height: 1.15;
+      transition: opacity 0.16s ease;
+    }
+
+    .ratio-control span {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .ratio-control input {
+      width: 100%;
+      accent-color: #5ec7ff;
+    }
+
+    .ratio-control-y {
+      grid-column: 1;
+      grid-row: 1;
+      justify-items: center;
+      align-items: center;
+    }
+
+    .ratio-control-y span {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+
+    .ratio-control-y input {
+      width: 150px;
+      transform: rotate(-90deg);
+      transform-origin: center;
+    }
+
+    .ratio-control-x {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .converter-adjuster:not(.is-adjustable) .ratio-control {
+      opacity: 0.34;
+      pointer-events: none;
+    }
+
     .hidden-input {
       display: none;
     }
@@ -1515,9 +1579,19 @@
             <span class="converter-spinner" aria-hidden="true"></span>
             <span id="converterActivityText">대기 중</span>
           </div>
-          <div class="preview-box" id="previewBox">
-            <span class="preview-empty">미리보기 없음</span>
-            <img id="converterPreview" alt="변환된 PNG 미리보기">
+          <div class="converter-adjuster" id="converterAdjuster">
+            <label class="ratio-control ratio-control-y" for="converterScaleY">
+              <span>세로 <strong id="converterScaleYValue">100%</strong></span>
+              <input id="converterScaleY" type="range" min="25" max="250" step="1" value="100" aria-label="PNG 세로 비율">
+            </label>
+            <div class="preview-box" id="previewBox">
+              <span class="preview-empty">미리보기 없음</span>
+              <img id="converterPreview" alt="변환된 PNG 미리보기">
+            </div>
+            <label class="ratio-control ratio-control-x" for="converterScaleX">
+              <span>가로 <strong id="converterScaleXValue">100%</strong></span>
+              <input id="converterScaleX" type="range" min="25" max="250" step="1" value="100" aria-label="PNG 가로 비율">
+            </label>
           </div>
 
           <p class="status" id="converterStatus" aria-live="polite">PNG가 아닌 이미지 파일을 선택하면 PNG 변환을 시작합니다. PDF 전체 페이지와 여러 결과는 ZIP으로 저장합니다.</p>
@@ -2139,7 +2213,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.40</span>
+      <span>notoow Utility Kit v0.41</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -2209,6 +2283,10 @@
       converterItems: [],
       activeConverterId: null,
       converterRunId: 0,
+      converterScaleX: 100,
+      converterScaleY: 100,
+      converterScaleDebounce: 0,
+      converterScaleRunId: 0,
       resizeItems: [],
       activeResizeId: null,
       resizeRunId: 0,
@@ -2256,7 +2334,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.40"
+      version: "0.41"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2291,6 +2369,11 @@
       converterFileList: $("#converterFileList"),
       converterActivity: $("#converterActivity"),
       converterActivityText: $("#converterActivityText"),
+      converterAdjuster: $("#converterAdjuster"),
+      converterScaleX: $("#converterScaleX"),
+      converterScaleY: $("#converterScaleY"),
+      converterScaleXValue: $("#converterScaleXValue"),
+      converterScaleYValue: $("#converterScaleYValue"),
       previewBox: $("#previewBox"),
       converterPreview: $("#converterPreview"),
       converterStatus: $("#converterStatus"),
@@ -3601,6 +3684,7 @@
     function clearConverterPreview() {
       els.converterPreview.removeAttribute("src");
       els.previewBox.classList.remove("has-image");
+      updateConverterScaleControls();
     }
 
     function getConverterOutputs(item) {
@@ -3618,6 +3702,120 @@
         }];
       }
       return [];
+    }
+
+    function updateConverterScaleLabels() {
+      els.converterScaleXValue.textContent = `${app.converterScaleX}%`;
+      els.converterScaleYValue.textContent = `${app.converterScaleY}%`;
+    }
+
+    function resetConverterScale() {
+      window.clearTimeout(app.converterScaleDebounce);
+      app.converterScaleX = 100;
+      app.converterScaleY = 100;
+      els.converterScaleX.value = "100";
+      els.converterScaleY.value = "100";
+      updateConverterScaleLabels();
+    }
+
+    function getSingleConverterOutput() {
+      const doneItems = app.converterItems.filter((item) => item.status === "done");
+      const outputs = doneItems.flatMap((item) => getConverterOutputs(item).map((output) => ({ item, output })));
+      return outputs.length === 1 ? outputs[0] : null;
+    }
+
+    function updateConverterScaleControls() {
+      const single = getSingleConverterOutput();
+      const canAdjust = !!single?.output?.blob && !single.output.pageCount;
+      els.converterAdjuster.classList.toggle("is-adjustable", canAdjust);
+      els.converterScaleX.disabled = !canAdjust;
+      els.converterScaleY.disabled = !canAdjust;
+      if (!canAdjust) {
+        resetConverterScale();
+      }
+    }
+
+    function converterScaledOutputName(output) {
+      const baseName = output.baseOutputName || output.outputName || "converted.png";
+      if (app.converterScaleX === 100 && app.converterScaleY === 100) {
+        return baseName;
+      }
+      const dot = baseName.toLowerCase().endsWith(".png") ? baseName.length - 4 : baseName.length;
+      return `${baseName.slice(0, dot)}-${app.converterScaleX}w-${app.converterScaleY}h.png`;
+    }
+
+    async function applyConverterScale(showStatus = true) {
+      const single = getSingleConverterOutput();
+      if (!single?.output?.blob || single.output.pageCount) {
+        updateConverterScaleControls();
+        return;
+      }
+
+      const { item, output } = single;
+      const sourceBlob = output.originalBlob || output.blob;
+      const sourceWidth = output.originalWidth || Number.parseInt((output.originalDimensions || output.dimensions || "").split("x")[0], 10);
+      const sourceHeight = output.originalHeight || Number.parseInt((output.originalDimensions || output.dimensions || "").split("x")[1], 10);
+      if (!sourceBlob || !sourceWidth || !sourceHeight) {
+        return;
+      }
+
+      const runId = app.converterScaleRunId + 1;
+      app.converterScaleRunId = runId;
+      const width = Math.max(1, Math.round(sourceWidth * (app.converterScaleX / 100)));
+      const height = Math.max(1, Math.round(sourceHeight * (app.converterScaleY / 100)));
+
+      try {
+        let blob = sourceBlob;
+        if (app.converterScaleX !== 100 || app.converterScaleY !== 100) {
+          const image = await loadImageFromBlob(sourceBlob);
+          if (runId !== app.converterScaleRunId) {
+            return;
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext("2d");
+          context.clearRect(0, 0, width, height);
+          context.drawImage(image, 0, 0, width, height);
+          blob = await canvasToPngBlob(canvas);
+        }
+
+        if (runId !== app.converterScaleRunId) {
+          return;
+        }
+
+        const nextUrl = URL.createObjectURL(blob);
+        if (output.url) {
+          URL.revokeObjectURL(output.url);
+        }
+        output.blob = blob;
+        output.url = nextUrl;
+        output.outputName = converterScaledOutputName(output);
+        output.dimensions = `${width}x${height}`;
+        item.blob = blob;
+        item.url = nextUrl;
+        item.outputName = output.outputName;
+        item.dimensions = output.dimensions;
+        updateConverterPreview();
+        renderConverterList();
+        if (showStatus) {
+          setStatus(els.converterStatus, `가로 ${app.converterScaleX}%, 세로 ${app.converterScaleY}% 비율로 PNG를 준비했습니다.`, "ok");
+        }
+      } catch (error) {
+        setStatus(els.converterStatus, error.message || "비율 조정에 실패했습니다.", "error");
+      }
+    }
+
+    function queueConverterScaleApply() {
+      app.converterScaleX = clampInteger(els.converterScaleX.value, 25, 250);
+      app.converterScaleY = clampInteger(els.converterScaleY.value, 25, 250);
+      els.converterScaleX.value = String(app.converterScaleX);
+      els.converterScaleY.value = String(app.converterScaleY);
+      updateConverterScaleLabels();
+      window.clearTimeout(app.converterScaleDebounce);
+      app.converterScaleDebounce = window.setTimeout(() => {
+        applyConverterScale(true);
+      }, 160);
     }
 
     function revokeConverterUrls(items = app.converterItems) {
@@ -3656,6 +3854,7 @@
       app.activeConverterId = item.id;
       els.converterPreview.src = output.url;
       els.previewBox.classList.add("has-image");
+      updateConverterScaleControls();
     }
 
     function converterItemMeta(item) {
@@ -3712,7 +3911,9 @@
       revokeConverterUrls();
       app.converterItems = [];
       app.activeConverterId = null;
+      app.converterScaleRunId += 1;
       els.converterInput.value = "";
+      resetConverterScale();
       renderConverterList();
       clearConverterPreview();
       setConverterActivity("", "대기 중");
@@ -3823,6 +4024,11 @@
           blob: entry.blob,
           url: URL.createObjectURL(entry.blob),
           outputName,
+          baseOutputName: outputName,
+          originalBlob: entry.blob,
+          originalWidth: entry.width,
+          originalHeight: entry.height,
+          originalDimensions: `${entry.width}x${entry.height}`,
           dimensions: `${entry.width}x${entry.height}`,
           pageNumber: entry.pageNumber || null,
           pageCount: entry.pageCount || null
@@ -3974,6 +4180,7 @@
     }
 
     async function saveConvertedPng() {
+      await applyConverterScale(false);
       const convertedOutputs = app.converterItems
         .filter((item) => item.status === "done")
         .flatMap((item) => getConverterOutputs(item))
@@ -6233,6 +6440,10 @@
       });
       els.chooseFolderBtn.addEventListener("click", chooseFolder);
       els.saveConvertedBtn.addEventListener("click", saveConvertedPng);
+      [els.converterScaleX, els.converterScaleY].forEach((control) => {
+        control.addEventListener("input", queueConverterScaleApply);
+        control.addEventListener("change", queueConverterScaleApply);
+      });
 
       els.chooseResizeFileBtn.addEventListener("click", () => els.resizeInput.click());
       els.resizeInput.addEventListener("change", () => selectResizeFiles(els.resizeInput.files));
@@ -6481,6 +6692,7 @@
       updateOutputFolderLabel();
       updateTimerDisplay();
       renderCalculator();
+      updateConverterScaleControls();
       updateQr();
       els.globalStatus.textContent = "모든 도구가 준비됨";
       if (window.lucide) {
