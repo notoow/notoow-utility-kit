@@ -21,10 +21,10 @@
       --quiet: rgba(247, 248, 251, 0.48);
       --stroke: rgba(255, 255, 255, 0.18);
       --stroke-strong: rgba(255, 255, 255, 0.34);
-      --glass-tint: rgba(18, 20, 27, 0.45);
-      --glass-tint-strong: rgba(21, 24, 32, 0.66);
-      --glass-rim: rgba(255, 255, 255, 0.42);
-      --glass-rim-soft: rgba(255, 255, 255, 0.12);
+      --glass-tint: rgba(255, 255, 255, 0.055);
+      --glass-tint-strong: rgba(255, 255, 255, 0.095);
+      --glass-rim: rgba(255, 255, 255, 0.64);
+      --glass-rim-soft: rgba(255, 255, 255, 0.2);
       --shadow: rgba(0, 0, 0, 0.38);
       --ok: #47d18c;
       --warn: #ffd166;
@@ -57,9 +57,10 @@
       overflow-x: hidden;
       padding: 30px 18px 24px;
       background:
-        linear-gradient(130deg, rgba(255, 255, 255, 0.08), transparent 26%),
-        linear-gradient(245deg, rgba(88, 199, 255, 0.15), transparent 32%),
-        linear-gradient(330deg, rgba(255, 110, 153, 0.12), transparent 34%),
+        linear-gradient(180deg, rgba(246, 214, 150, 0.2), transparent 24%),
+        linear-gradient(130deg, rgba(255, 255, 255, 0.1), transparent 26%),
+        linear-gradient(245deg, rgba(88, 199, 255, 0.16), transparent 32%),
+        linear-gradient(330deg, rgba(255, 110, 153, 0.13), transparent 34%),
         var(--bg);
     }
 
@@ -91,31 +92,40 @@
       z-index: -2;
       overflow: hidden;
       background:
+        linear-gradient(116deg, transparent 0 16%, rgba(255, 194, 98, 0.58) 16% 25%, transparent 25% 42%, rgba(94, 199, 255, 0.48) 42% 53%, transparent 53% 68%, rgba(255, 110, 153, 0.34) 68% 76%, transparent 76%),
+        linear-gradient(180deg, rgba(255, 224, 166, 0.88) 0%, rgba(161, 215, 220, 0.76) 26%, rgba(41, 92, 118, 0.64) 56%, rgba(6, 10, 16, 0.96) 100%),
         linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-      background-size: 72px 72px;
+        linear-gradient(0deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: auto, auto, 78px 78px, 78px 78px;
     }
 
     .scene::before,
     .scene::after {
       content: "";
       position: absolute;
-      inset: -12%;
-      opacity: 0.72;
-      transform: rotate(-8deg);
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .scene::before {
+      top: 34%;
+      height: 50%;
+      opacity: 0.56;
+      clip-path: polygon(0 54%, 7% 43%, 15% 49%, 25% 28%, 37% 44%, 49% 21%, 61% 41%, 72% 26%, 86% 47%, 100% 30%, 100% 100%, 0 100%);
       background:
-        linear-gradient(112deg, transparent 0 17%, rgba(71, 209, 140, 0.22) 17% 25%, transparent 25% 42%, rgba(94, 199, 255, 0.2) 42% 49%, transparent 49% 70%, rgba(255, 110, 153, 0.17) 70% 78%, transparent 78%),
-        repeating-linear-gradient(112deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 16px);
-      filter: saturate(1.15);
+        linear-gradient(180deg, rgba(18, 44, 59, 0.8), rgba(3, 7, 12, 0.92)),
+        linear-gradient(112deg, transparent 0 18%, rgba(71, 209, 140, 0.18) 18% 25%, transparent 25% 42%, rgba(94, 199, 255, 0.18) 42% 50%, transparent 50% 72%, rgba(255, 110, 153, 0.12) 72% 80%, transparent 80%);
+      filter: saturate(1.18) blur(0.2px);
     }
 
     .scene::after {
-      inset: -4%;
-      opacity: 0.32;
-      transform: rotate(7deg) translateY(4%);
+      top: 54%;
+      opacity: 0.58;
       background:
-        linear-gradient(170deg, transparent 0 12%, rgba(255, 255, 255, 0.16) 12% 13%, transparent 13% 38%, rgba(155, 140, 255, 0.18) 38% 46%, transparent 46% 68%, rgba(255, 209, 102, 0.14) 68% 74%, transparent 74%),
-        repeating-linear-gradient(0deg, transparent 0 22px, rgba(255, 255, 255, 0.045) 22px 23px);
+        linear-gradient(180deg, rgba(178, 235, 229, 0.34), rgba(5, 9, 15, 0.88)),
+        repeating-linear-gradient(175deg, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px 26px),
+        repeating-linear-gradient(90deg, transparent 0 76px, rgba(255, 255, 255, 0.055) 76px 77px);
+      mask-image: linear-gradient(180deg, transparent 0%, black 18%, black 86%, transparent 100%);
     }
 
     .app-shell {
@@ -130,26 +140,32 @@
       isolation: isolate;
       overflow: hidden;
       background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.07) 34%, rgba(255, 255, 255, 0.026) 68%),
-        radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.2), transparent 34%),
-        radial-gradient(circle at 94% 100%, rgba(94, 199, 255, 0.11), transparent 36%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035) 33%, rgba(255, 255, 255, 0.012) 66%),
+        radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.13), transparent 34%),
+        radial-gradient(circle at 94% 100%, rgba(94, 199, 255, 0.08), transparent 36%),
         var(--glass-tint);
-      border: 1px solid var(--stroke);
-      backdrop-filter: blur(26px) saturate(1.78) brightness(1.1) contrast(1.04);
-      -webkit-backdrop-filter: blur(26px) saturate(1.78) brightness(1.1) contrast(1.04);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(3px) saturate(2.05) brightness(1.12) contrast(1.07);
+      -webkit-backdrop-filter: blur(3px) saturate(2.05) brightness(1.12) contrast(1.07);
       box-shadow:
-        0 26px 60px var(--shadow),
-        inset 0 1px 1px var(--glass-rim),
+        0 28px 68px rgba(0, 0, 0, 0.44),
+        0 1px 0 rgba(255, 255, 255, 0.32),
+        inset 0 1px 1px rgba(255, 255, 255, 0.72),
         inset 0 -1px 1px rgba(0, 0, 0, 0.34),
-        inset 18px 20px 40px rgba(255, 255, 255, 0.048),
-        inset -18px -20px 44px rgba(0, 0, 0, 0.2);
+        inset 18px 20px 40px rgba(255, 255, 255, 0.065),
+        inset -20px -22px 48px rgba(0, 0, 0, 0.18);
     }
 
     @supports ((backdrop-filter: url("#fluid-glass-distortion")) or (-webkit-backdrop-filter: url("#fluid-glass-distortion"))) {
       .liquid {
-        backdrop-filter: url("#fluid-glass-distortion") blur(22px) saturate(1.86) brightness(1.1) contrast(1.05);
-        -webkit-backdrop-filter: url("#fluid-glass-distortion") blur(22px) saturate(1.86) brightness(1.1) contrast(1.05);
+        backdrop-filter: url("#fluid-glass-distortion") blur(2px) saturate(2.2) brightness(1.14) contrast(1.1);
+        -webkit-backdrop-filter: url("#fluid-glass-distortion") blur(2px) saturate(2.2) brightness(1.14) contrast(1.1);
       }
+    }
+
+    .liquid > * {
+      position: relative;
+      z-index: 2;
     }
 
     .liquid::before,
@@ -158,30 +174,33 @@
       position: absolute;
       inset: 0;
       pointer-events: none;
-      z-index: -1;
+      z-index: 1;
     }
 
     .liquid::before {
       background:
-        radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.32), transparent 28%),
-        radial-gradient(circle at 100% 16%, rgba(255, 255, 255, 0.18), transparent 24%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.19), transparent 34%);
+        radial-gradient(120% 70% at 18% 0%, rgba(255, 255, 255, 0.24), transparent 34%),
+        radial-gradient(90% 70% at 100% 14%, rgba(255, 255, 255, 0.12), transparent 32%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent 38%),
+        linear-gradient(135deg, transparent 0 44%, rgba(255, 255, 255, 0.052) 49%, transparent 56%);
       mix-blend-mode: screen;
-      opacity: 0.9;
+      opacity: 0.38;
     }
 
     .liquid::after {
       inset: 1px;
       border-radius: inherit;
       box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.3),
         inset 1px 0 0 var(--glass-rim),
         inset -1px 0 0 var(--glass-rim-soft),
-        inset 0 1px 0 rgba(255, 255, 255, 0.22),
-        inset 0 -18px 34px rgba(0, 0, 0, 0.22);
+        inset 0 1px 0 rgba(255, 255, 255, 0.38),
+        inset 0 -22px 34px rgba(0, 0, 0, 0.24),
+        0 0 0 1px rgba(255, 255, 255, 0.12);
       background:
-        linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 14% 86%, rgba(255, 255, 255, 0.14)),
-        linear-gradient(0deg, rgba(255, 255, 255, 0.1), transparent 18% 80%, rgba(255, 255, 255, 0.1)),
-        linear-gradient(135deg, transparent 0 42%, rgba(255, 255, 255, 0.09) 47%, transparent 54%);
+        linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 12% 88%, rgba(255, 255, 255, 0.18)),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.12), transparent 18% 78%, rgba(255, 255, 255, 0.16)),
+        linear-gradient(135deg, transparent 0 40%, rgba(255, 255, 255, 0.12) 48%, transparent 57%);
     }
 
     .topbar {
@@ -217,12 +236,14 @@
       font-weight: 800;
       letter-spacing: 0;
       line-height: 1;
+      text-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
     }
 
     .brand p {
       color: var(--muted);
       font-size: 15px;
       line-height: 1.45;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.42);
     }
 
     .system-state {
@@ -278,9 +299,9 @@
       transform: translateY(-2px);
       border-color: var(--stroke-strong);
       background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.085) 34%, rgba(255, 255, 255, 0.034) 68%),
-        radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.24), transparent 34%),
-        radial-gradient(circle at 94% 100%, rgba(94, 199, 255, 0.14), transparent 36%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.048) 34%, rgba(255, 255, 255, 0.018) 68%),
+        radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.17), transparent 34%),
+        radial-gradient(circle at 94% 100%, rgba(94, 199, 255, 0.1), transparent 36%),
         var(--glass-tint-strong);
       box-shadow:
         0 32px 70px rgba(0, 0, 0, 0.45),
@@ -325,6 +346,7 @@
     .icon-box.cyan { color: #c7fff4; }
     .icon-box.gold { color: #ffe3a3; }
     .icon-box.slate { color: #e1e8f4; }
+    .icon-box.mint { color: #c8ffe8; }
 
     .widget-title {
       min-width: 0;
@@ -340,6 +362,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      text-shadow: 0 1px 10px rgba(0, 0, 0, 0.46);
     }
 
     .widget-title span {
@@ -349,6 +372,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.42);
     }
 
     .input-stack {
@@ -593,6 +617,146 @@
       border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
+    .calculator-widget {
+      gap: 14px;
+    }
+
+    .calculator-display {
+      min-height: 58px;
+      height: auto;
+      padding: 12px 14px;
+      text-align: right;
+      font-family: "Geist Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 24px;
+      font-weight: 760;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .calculator-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .calc-key {
+      min-width: 0;
+      height: 44px;
+      justify-content: center;
+      padding: 0;
+      font-size: 15px;
+      font-weight: 780;
+    }
+
+    .calc-key.operator {
+      color: #c7fff4;
+    }
+
+    .calc-key.danger {
+      color: #ffd0d0;
+    }
+
+    .floating-timer {
+      position: fixed;
+      right: clamp(14px, 3vw, 34px);
+      bottom: clamp(14px, 3vw, 30px);
+      z-index: 30;
+      width: min(350px, calc(100vw - 28px));
+      padding: 14px;
+      border-radius: 28px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .timer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .timer-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-size: 13px;
+      font-weight: 780;
+      color: rgba(247, 248, 251, 0.82);
+      text-transform: uppercase;
+    }
+
+    .timer-display {
+      font-family: "Geist Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: clamp(34px, 8vw, 48px);
+      font-weight: 820;
+      line-height: 0.95;
+      letter-spacing: 0;
+      text-align: center;
+      text-shadow: 0 4px 22px rgba(0, 0, 0, 0.48);
+    }
+
+    .timer-inputs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .timer-inputs label {
+      display: grid;
+      gap: 5px;
+      color: var(--quiet);
+      font-size: 11px;
+      font-weight: 720;
+    }
+
+    .timer-inputs .ios-input {
+      height: 38px;
+      text-align: center;
+      border-radius: 14px;
+      padding: 0 8px;
+      font-family: "Geist Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 15px;
+    }
+
+    .timer-progress {
+      height: 7px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(3, 5, 9, 0.46);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .timer-progress span {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #47d18c, #5ec7ff);
+      transition: width 0.2s ease;
+    }
+
+    .timer-actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .timer-actions .ios-btn {
+      min-width: 0;
+      height: 40px;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .timer-status {
+      margin: -2px 0 0;
+      color: var(--quiet);
+      font-size: 12px;
+      line-height: 1.35;
+      text-align: center;
+    }
+
     .segmented {
       display: grid;
       grid-auto-flow: column;
@@ -636,11 +800,13 @@
 
     .drop-zone,
     .paste-zone {
-      border: 1px dashed rgba(255, 255, 255, 0.25);
+      border: 1px dashed rgba(255, 255, 255, 0.34);
       border-radius: 22px;
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035)),
-        rgba(4, 6, 10, 0.2);
+        linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.026)),
+        rgba(255, 255, 255, 0.035);
+      backdrop-filter: blur(2px) saturate(1.35);
+      -webkit-backdrop-filter: blur(2px) saturate(1.35);
       min-height: 96px;
       display: grid;
       place-items: center;
@@ -680,8 +846,8 @@
       outline: none;
       border-color: rgba(255, 255, 255, 0.52);
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)),
-        rgba(4, 6, 10, 0.28);
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.052)),
+        rgba(255, 255, 255, 0.075);
     }
 
     .converter-zone {
@@ -734,7 +900,7 @@
       width: 100%;
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 13px;
-      background: rgba(4, 6, 10, 0.28);
+      background: rgba(255, 255, 255, 0.06);
       color: inherit;
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -797,7 +963,7 @@
       gap: 9px;
       border-radius: 15px;
       border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(4, 6, 10, 0.26);
+      background: rgba(255, 255, 255, 0.065);
       color: var(--muted);
       font-size: 12px;
       font-weight: 720;
@@ -856,7 +1022,7 @@
       gap: 9px;
       border-radius: 15px;
       border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(4, 6, 10, 0.26);
+      background: rgba(255, 255, 255, 0.065);
       color: var(--muted);
       font-size: 12px;
       font-weight: 720;
@@ -878,7 +1044,7 @@
       min-height: 42px;
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 16px;
-      background: rgba(4, 6, 10, 0.28);
+      background: rgba(255, 255, 255, 0.06);
       color: var(--muted);
       display: grid;
       gap: 3px;
@@ -1011,8 +1177,8 @@
       min-height: 194px;
       border-radius: 24px;
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04)),
-        rgba(4, 6, 10, 0.34);
+        linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.03)),
+        rgba(255, 255, 255, 0.055);
       border: 1px solid rgba(255, 255, 255, 0.14);
       display: grid;
       place-items: center;
@@ -1133,7 +1299,7 @@
 
     @media (max-width: 860px) {
       body {
-        padding: 20px 12px;
+        padding: 20px 12px 220px;
       }
 
       .topbar,
@@ -1161,6 +1327,66 @@
     }
 
     @media (max-width: 560px) {
+      body {
+        padding-bottom: 260px;
+      }
+
+      .floating-timer {
+        left: 12px;
+        right: 12px;
+        bottom: 10px;
+        width: auto;
+        padding: 10px;
+        border-radius: 24px;
+        gap: 8px;
+        grid-template-columns: 112px minmax(0, 1fr);
+        align-items: center;
+      }
+
+      .timer-head {
+        grid-column: 1 / -1;
+        min-height: 30px;
+      }
+
+      .timer-title {
+        font-size: 11px;
+      }
+
+      .timer-display {
+        font-size: 30px;
+        text-align: left;
+      }
+
+      .timer-inputs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .timer-inputs label {
+        font-size: 10px;
+      }
+
+      .timer-inputs .ios-input {
+        height: 30px;
+      }
+
+      .timer-progress,
+      .timer-actions {
+        grid-column: 1 / -1;
+      }
+
+      .timer-actions {
+        gap: 6px;
+      }
+
+      .timer-actions .ios-btn {
+        height: 34px;
+      }
+
+      .timer-status {
+        display: none;
+      }
+
       .topbar,
       .utility-panel,
       .footer {
@@ -1224,15 +1450,15 @@
         <feTurbulence type="fractalNoise" baseFrequency="0.010 0.016" numOctaves="2" seed="17" result="edgeNoise"></feTurbulence>
         <feGaussianBlur in="edgeNoise" stdDeviation="7" result="softNoise"></feGaussianBlur>
 
-        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="21" xChannelSelector="R" yChannelSelector="G" result="redWarp"></feDisplacementMap>
-        <feOffset in="redWarp" dx="-0.7" dy="-0.25" result="redOffset"></feOffset>
+        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="32" xChannelSelector="R" yChannelSelector="G" result="redWarp"></feDisplacementMap>
+        <feOffset in="redWarp" dx="-1.2" dy="-0.45" result="redOffset"></feOffset>
         <feColorMatrix in="redOffset" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="redChannel"></feColorMatrix>
 
-        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="18" xChannelSelector="R" yChannelSelector="G" result="greenWarp"></feDisplacementMap>
+        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="26" xChannelSelector="R" yChannelSelector="G" result="greenWarp"></feDisplacementMap>
         <feColorMatrix in="greenWarp" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="greenChannel"></feColorMatrix>
 
-        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="16" xChannelSelector="R" yChannelSelector="G" result="blueWarp"></feDisplacementMap>
-        <feOffset in="blueWarp" dx="0.65" dy="0.25" result="blueOffset"></feOffset>
+        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="22" xChannelSelector="R" yChannelSelector="G" result="blueWarp"></feDisplacementMap>
+        <feOffset in="blueWarp" dx="1.1" dy="0.42" result="blueOffset"></feOffset>
         <feColorMatrix in="blueOffset" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="blueChannel"></feColorMatrix>
 
         <feBlend in="greenChannel" in2="blueChannel" mode="screen" result="cyanChannels"></feBlend>
@@ -1495,6 +1721,43 @@
               열기
             </button>
           </div>
+        </article>
+
+        <article class="widget liquid calculator-widget" data-liquid aria-labelledby="calcTitle">
+          <div class="widget-header">
+            <div class="icon-box mint">
+              <i data-lucide="calculator" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="calcTitle">계산기</strong>
+              <span>사칙연산 빠른 계산</span>
+            </div>
+          </div>
+
+          <output class="ios-input calculator-display" id="calcDisplay" aria-live="polite">0</output>
+          <div class="calculator-grid" aria-label="계산기 키패드">
+            <button class="ios-btn calc-key danger" type="button" data-calc-key="clear">C</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="backspace">⌫</button>
+            <button class="ios-btn calc-key operator" type="button" data-calc-key="(">(</button>
+            <button class="ios-btn calc-key operator" type="button" data-calc-key=")">)</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="7">7</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="8">8</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="9">9</button>
+            <button class="ios-btn calc-key operator" type="button" data-calc-key="/">÷</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="4">4</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="5">5</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="6">6</button>
+            <button class="ios-btn calc-key operator" type="button" data-calc-key="*">×</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="1">1</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="2">2</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="3">3</button>
+            <button class="ios-btn calc-key operator" type="button" data-calc-key="-">−</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key="0">0</button>
+            <button class="ios-btn calc-key" type="button" data-calc-key=".">.</button>
+            <button class="ios-btn calc-key equal primary" type="button" data-calc-key="equals">=</button>
+            <button class="ios-btn calc-key operator" type="button" data-calc-key="+">+</button>
+          </div>
+          <p class="status" id="calcStatus" aria-live="polite">숫자를 눌러 계산하세요.</p>
         </article>
 
         <article class="widget liquid" data-liquid aria-labelledby="resizeTitle">
@@ -1876,7 +2139,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.38</span>
+      <span>notoow Utility Kit v0.40</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1893,6 +2156,45 @@
       </div>
     </footer>
   </main>
+
+  <aside class="floating-timer liquid" data-liquid aria-labelledby="timerTitle">
+    <div class="timer-head">
+      <div class="timer-title">
+        <i data-lucide="timer" stroke-width="2" width="17" height="17"></i>
+        <span id="timerTitle">Floating Timer</span>
+      </div>
+      <button class="ios-btn icon-only" id="timerResetBtn" type="button" title="타이머 리셋" aria-label="타이머 리셋">
+        <i data-lucide="rotate-ccw" stroke-width="2" width="17" height="17"></i>
+      </button>
+    </div>
+    <div class="timer-display" id="timerDisplay" aria-live="polite">05:00</div>
+    <div class="timer-inputs">
+      <label for="timerMinutes">
+        min
+        <input class="ios-input" id="timerMinutes" type="number" inputmode="numeric" min="0" max="999" step="1" value="5">
+      </label>
+      <label for="timerSeconds">
+        sec
+        <input class="ios-input" id="timerSeconds" type="number" inputmode="numeric" min="0" max="59" step="1" value="0">
+      </label>
+    </div>
+    <div class="timer-progress" aria-hidden="true">
+      <span id="timerProgress"></span>
+    </div>
+    <div class="timer-actions">
+      <button class="ios-btn primary" id="timerStartBtn" type="button" aria-label="타이머 시작">
+        <i data-lucide="play" stroke-width="2" width="16" height="16"></i>
+      </button>
+      <button class="ios-btn" id="timerPauseBtn" type="button" aria-label="타이머 일시정지">
+        <i data-lucide="pause" stroke-width="2" width="16" height="16"></i>
+      </button>
+      <button class="ios-btn" id="timerStopBtn" type="button" aria-label="타이머 정지">
+        <i data-lucide="square" stroke-width="2" width="16" height="16"></i>
+      </button>
+      <button class="ios-btn" id="timerMinuteBtn" type="button" aria-label="1분 추가">+1</button>
+    </div>
+    <p class="timer-status" id="timerStatus">대기 중</p>
+  </aside>
 
   <script>
     const app = {
@@ -1939,6 +2241,13 @@
       base64Bytes: null,
       base64RunId: 0,
       base64Debounce: 0,
+      timerTotalSeconds: 300,
+      timerRemainingSeconds: 300,
+      timerEndAt: 0,
+      timerInterval: 0,
+      timerRunning: false,
+      calcExpression: "",
+      calcJustSolved: false,
       pdfjs: null,
       lameReady: null,
       directoryHandle: null,
@@ -1947,7 +2256,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.38"
+      version: "0.40"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2072,7 +2381,19 @@
       settingsStatus: $("#settingsStatus"),
       resetAppBtn: $("#resetAppBtn"),
       deleteReminderToggle: $("#deleteReminderToggle"),
-      autoCopyToggle: $("#autoCopyToggle")
+      autoCopyToggle: $("#autoCopyToggle"),
+      timerDisplay: $("#timerDisplay"),
+      timerMinutes: $("#timerMinutes"),
+      timerSeconds: $("#timerSeconds"),
+      timerProgress: $("#timerProgress"),
+      timerStartBtn: $("#timerStartBtn"),
+      timerPauseBtn: $("#timerPauseBtn"),
+      timerStopBtn: $("#timerStopBtn"),
+      timerResetBtn: $("#timerResetBtn"),
+      timerMinuteBtn: $("#timerMinuteBtn"),
+      timerStatus: $("#timerStatus"),
+      calcDisplay: $("#calcDisplay"),
+      calcStatus: $("#calcStatus")
     };
 
     const SETTINGS_KEY = "notoow.utility.settings";
@@ -2178,6 +2499,241 @@
       if (!busy && window.lucide) {
         lucide.createIcons();
       }
+    }
+
+    function clampInteger(value, min, max) {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed)) {
+        return min;
+      }
+      return Math.min(max, Math.max(min, parsed));
+    }
+
+    function formatTimerSeconds(totalSeconds) {
+      const safeSeconds = Math.max(0, Math.ceil(totalSeconds));
+      const hours = Math.floor(safeSeconds / 3600);
+      const minutes = Math.floor((safeSeconds % 3600) / 60);
+      const seconds = safeSeconds % 60;
+      if (hours > 0) {
+        return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+      }
+      return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    function getTimerInputSeconds() {
+      const minutes = clampInteger(els.timerMinutes.value, 0, 999);
+      const seconds = clampInteger(els.timerSeconds.value, 0, 59);
+      els.timerMinutes.value = String(minutes);
+      els.timerSeconds.value = String(seconds);
+      return (minutes * 60) + seconds;
+    }
+
+    function setTimerInputsFromSeconds(totalSeconds) {
+      const safeSeconds = Math.max(0, Math.ceil(totalSeconds));
+      els.timerMinutes.value = String(Math.floor(safeSeconds / 60));
+      els.timerSeconds.value = String(safeSeconds % 60);
+    }
+
+    function setTimerStatus(message) {
+      els.timerStatus.textContent = message;
+      els.globalStatus.textContent = message;
+    }
+
+    function updateTimerDisplay() {
+      els.timerDisplay.textContent = formatTimerSeconds(app.timerRemainingSeconds);
+      const ratio = app.timerTotalSeconds > 0
+        ? Math.max(0, Math.min(1, app.timerRemainingSeconds / app.timerTotalSeconds))
+        : 0;
+      els.timerProgress.style.width = `${Math.round(ratio * 100)}%`;
+      els.timerStartBtn.disabled = app.timerRunning || app.timerRemainingSeconds <= 0;
+      els.timerPauseBtn.disabled = !app.timerRunning;
+      els.timerStopBtn.disabled = !app.timerRunning && app.timerRemainingSeconds <= 0;
+    }
+
+    function syncTimerFromInputs() {
+      if (app.timerRunning) {
+        return;
+      }
+      app.timerTotalSeconds = getTimerInputSeconds();
+      app.timerRemainingSeconds = app.timerTotalSeconds;
+      updateTimerDisplay();
+      setTimerStatus("타이머 대기 중");
+    }
+
+    function clearTimerTick() {
+      if (app.timerInterval) {
+        window.clearInterval(app.timerInterval);
+        app.timerInterval = 0;
+      }
+    }
+
+    function playTimerDoneTone() {
+      const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextCtor) {
+        return;
+      }
+      const audioContext = new AudioContextCtor();
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.16, audioContext.currentTime + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.5);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.52);
+      window.setTimeout(() => audioContext.close(), 700);
+    }
+
+    function finishTimer() {
+      clearTimerTick();
+      app.timerRunning = false;
+      app.timerRemainingSeconds = 0;
+      updateTimerDisplay();
+      setTimerStatus("타이머 완료");
+      playTimerDoneTone();
+    }
+
+    function tickTimer() {
+      const remaining = Math.ceil((app.timerEndAt - Date.now()) / 1000);
+      if (remaining <= 0) {
+        finishTimer();
+        return;
+      }
+      app.timerRemainingSeconds = remaining;
+      updateTimerDisplay();
+    }
+
+    function startTimer() {
+      if (app.timerRunning) {
+        return;
+      }
+      if (app.timerRemainingSeconds <= 0) {
+        app.timerTotalSeconds = getTimerInputSeconds();
+        app.timerRemainingSeconds = app.timerTotalSeconds;
+      }
+      if (app.timerRemainingSeconds <= 0) {
+        setTimerStatus("시간을 입력하세요.");
+        updateTimerDisplay();
+        return;
+      }
+      app.timerTotalSeconds = Math.max(app.timerTotalSeconds, app.timerRemainingSeconds);
+      app.timerEndAt = Date.now() + (app.timerRemainingSeconds * 1000);
+      app.timerRunning = true;
+      clearTimerTick();
+      app.timerInterval = window.setInterval(tickTimer, 250);
+      setTimerStatus("타이머 실행 중");
+      updateTimerDisplay();
+    }
+
+    function pauseTimer() {
+      if (!app.timerRunning) {
+        return;
+      }
+      tickTimer();
+      clearTimerTick();
+      app.timerRunning = false;
+      setTimerStatus("타이머 일시정지");
+      updateTimerDisplay();
+    }
+
+    function stopTimer() {
+      clearTimerTick();
+      app.timerRunning = false;
+      app.timerRemainingSeconds = 0;
+      updateTimerDisplay();
+      setTimerStatus("타이머 정지");
+    }
+
+    function resetTimer() {
+      clearTimerTick();
+      app.timerRunning = false;
+      app.timerTotalSeconds = getTimerInputSeconds();
+      app.timerRemainingSeconds = app.timerTotalSeconds;
+      updateTimerDisplay();
+      setTimerStatus("타이머 리셋");
+    }
+
+    function addTimerMinute() {
+      const addedSeconds = 60;
+      app.timerRemainingSeconds += addedSeconds;
+      app.timerTotalSeconds = Math.max(app.timerTotalSeconds + addedSeconds, app.timerRemainingSeconds);
+      if (app.timerRunning) {
+        app.timerEndAt += addedSeconds * 1000;
+      } else {
+        setTimerInputsFromSeconds(app.timerRemainingSeconds);
+      }
+      updateTimerDisplay();
+      setTimerStatus("1분 추가");
+    }
+
+    function renderCalculator() {
+      els.calcDisplay.textContent = app.calcExpression || "0";
+    }
+
+    function normalizeCalculatorExpression(expression) {
+      return expression
+        .replace(/×/g, "*")
+        .replace(/÷/g, "/")
+        .replace(/−/g, "-")
+        .replace(/\s+/g, "");
+    }
+
+    function evaluateCalculatorExpression(expression) {
+      const normalized = normalizeCalculatorExpression(expression);
+      if (!normalized || !/^[0-9+\-*/().]+$/.test(normalized)) {
+        throw new Error("계산식을 확인하세요.");
+      }
+      const value = Function(`"use strict"; return (${normalized});`)();
+      if (!Number.isFinite(value)) {
+        throw new Error("계산할 수 없는 값입니다.");
+      }
+      return Number.isInteger(value) ? String(value) : String(Number(value.toPrecision(12)));
+    }
+
+    function handleCalculatorKey(key) {
+      if (key === "clear") {
+        app.calcExpression = "";
+        app.calcJustSolved = false;
+        setStatus(els.calcStatus, "계산기를 초기화했습니다.", "ok");
+        renderCalculator();
+        return;
+      }
+
+      if (key === "backspace") {
+        app.calcExpression = app.calcExpression.slice(0, -1);
+        app.calcJustSolved = false;
+        setStatus(els.calcStatus, "숫자를 눌러 계산하세요.");
+        renderCalculator();
+        return;
+      }
+
+      if (key === "equals") {
+        try {
+          app.calcExpression = evaluateCalculatorExpression(app.calcExpression);
+          app.calcJustSolved = true;
+          setStatus(els.calcStatus, "계산 완료", "ok");
+        } catch (error) {
+          setStatus(els.calcStatus, error.message || "계산에 실패했습니다.", "error");
+        }
+        renderCalculator();
+        return;
+      }
+
+      const isOperator = ["+", "-", "*", "/"].includes(key);
+      if (app.calcJustSolved && !isOperator) {
+        app.calcExpression = "";
+      }
+      app.calcJustSolved = false;
+      if (app.calcExpression.length >= 42) {
+        setStatus(els.calcStatus, "계산식이 너무 깁니다.", "warn");
+        return;
+      }
+      app.calcExpression += key;
+      setStatus(els.calcStatus, "숫자를 눌러 계산하세요.");
+      renderCalculator();
     }
 
     function bytesToBase64(bytes) {
@@ -5530,6 +6086,18 @@
       setHashOutput("");
       setStatus(els.hashStatus, "텍스트를 입력하거나 파일을 선택하세요.");
       resetBase64State();
+      app.calcExpression = "";
+      app.calcJustSolved = false;
+      renderCalculator();
+      els.calcStatus.textContent = "숫자를 눌러 계산하세요.";
+      clearTimerTick();
+      app.timerRunning = false;
+      els.timerMinutes.value = "5";
+      els.timerSeconds.value = "0";
+      app.timerTotalSeconds = 300;
+      app.timerRemainingSeconds = 300;
+      updateTimerDisplay();
+      els.timerStatus.textContent = "대기 중";
       updateQr();
       setStatus(els.settingsStatus, "입력을 초기화했습니다.", "ok");
     }
@@ -5852,6 +6420,20 @@
       els.copyBase64Btn.addEventListener("click", copyBase64Output);
       els.saveBase64Btn.addEventListener("click", saveBase64Output);
 
+      [els.timerMinutes, els.timerSeconds].forEach((control) => {
+        control.addEventListener("input", syncTimerFromInputs);
+        control.addEventListener("change", syncTimerFromInputs);
+      });
+      els.timerStartBtn.addEventListener("click", startTimer);
+      els.timerPauseBtn.addEventListener("click", pauseTimer);
+      els.timerStopBtn.addEventListener("click", stopTimer);
+      els.timerResetBtn.addEventListener("click", resetTimer);
+      els.timerMinuteBtn.addEventListener("click", addTimerMinute);
+
+      document.querySelectorAll("[data-calc-key]").forEach((button) => {
+        button.addEventListener("click", () => handleCalculatorKey(button.dataset.calcKey));
+      });
+
       els.chromeSettingsBtn.addEventListener("click", openChromeSettings);
       els.windowsSettingsBtn.addEventListener("click", openWindowsSettings);
       els.chooseOutputFolderBtn.addEventListener("click", () => chooseOutputFolder(els.settingsStatus));
@@ -5874,6 +6456,8 @@
       els.pdfQualityValue.textContent = `${els.pdfQuality.value}%`;
       setBase64Mode(app.base64Mode, true);
       updateOutputFolderLabel();
+      updateTimerDisplay();
+      renderCalculator();
       updateQr();
       els.globalStatus.textContent = "모든 도구가 준비됨";
       if (window.lucide) {
