@@ -720,20 +720,67 @@
     }
 
     .timer-progress {
-      height: 7px;
+      --timer-fill: 8.333%;
+      width: 100%;
+      height: 18px;
+      appearance: none;
+      border: 0;
       border-radius: 999px;
-      overflow: hidden;
-      background: rgba(3, 5, 9, 0.46);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      background:
+        linear-gradient(90deg, #47d18c 0 var(--timer-fill), #5ec7ff var(--timer-fill), rgba(3, 5, 9, 0.5) var(--timer-fill)),
+        rgba(3, 5, 9, 0.46);
+      cursor: pointer;
     }
 
-    .timer-progress span {
-      display: block;
-      width: 100%;
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, #47d18c, #5ec7ff);
-      transition: width 0.2s ease;
+    .timer-progress:disabled {
+      cursor: default;
+      opacity: 0.92;
+    }
+
+    .timer-progress::-webkit-slider-runnable-track {
+      height: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: transparent;
+    }
+
+    .timer-progress::-webkit-slider-thumb {
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      margin-top: -4px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.58);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(205, 231, 245, 0.9));
+      box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.34),
+        0 0 0 4px rgba(94, 199, 255, 0.14);
+    }
+
+    .timer-progress:disabled::-webkit-slider-thumb {
+      opacity: 0;
+    }
+
+    .timer-progress::-moz-range-track {
+      height: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: transparent;
+    }
+
+    .timer-progress::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.58);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(205, 231, 245, 0.9));
+      box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.34),
+        0 0 0 4px rgba(94, 199, 255, 0.14);
+    }
+
+    .timer-progress:disabled::-moz-range-thumb {
+      opacity: 0;
     }
 
     .timer-actions {
@@ -747,6 +794,53 @@
       height: 40px;
       justify-content: center;
       padding: 0;
+    }
+
+    .timer-minute-stepper {
+      display: grid;
+      grid-template-columns: 1fr 0.8fr 1fr;
+      min-width: 0;
+      height: 40px;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.065);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        0 8px 18px rgba(0, 0, 0, 0.22);
+    }
+
+    .timer-step-btn,
+    .timer-step-label {
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      color: rgba(247, 248, 251, 0.84);
+      font-size: 14px;
+      font-weight: 820;
+    }
+
+    .timer-step-btn {
+      cursor: pointer;
+      transition: background 0.16s ease, color 0.16s ease;
+    }
+
+    .timer-step-btn:hover {
+      background: rgba(255, 255, 255, 0.11);
+      color: var(--text);
+    }
+
+    .timer-step-btn:disabled {
+      cursor: default;
+      opacity: 0.38;
+    }
+
+    .timer-step-label {
+      display: grid;
+      place-items: center;
+      border-inline: 1px solid rgba(255, 255, 255, 0.12);
+      color: rgba(247, 248, 251, 0.58);
+      pointer-events: none;
     }
 
     .timer-status {
@@ -1451,6 +1545,10 @@
       }
 
       .timer-actions .ios-btn {
+        height: 34px;
+      }
+
+      .timer-minute-stepper {
         height: 34px;
       }
 
@@ -2220,7 +2318,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.42</span>
+      <span>notoow Utility Kit v0.43</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -2252,16 +2350,14 @@
     <div class="timer-inputs">
       <label for="timerMinutes">
         min
-        <input class="ios-input" id="timerMinutes" type="number" inputmode="numeric" min="0" max="999" step="1" value="5">
+        <input class="ios-input" id="timerMinutes" type="number" inputmode="numeric" min="0" max="60" step="1" value="5">
       </label>
       <label for="timerSeconds">
         sec
         <input class="ios-input" id="timerSeconds" type="number" inputmode="numeric" min="0" max="59" step="1" value="0">
       </label>
     </div>
-    <div class="timer-progress" aria-hidden="true">
-      <span id="timerProgress"></span>
-    </div>
+    <input class="timer-progress" id="timerProgress" type="range" min="0" max="3600" step="1" value="300" aria-label="타이머 길이">
     <div class="timer-actions">
       <button class="ios-btn primary" id="timerStartBtn" type="button" aria-label="타이머 시작">
         <i data-lucide="play" stroke-width="2" width="16" height="16"></i>
@@ -2272,7 +2368,11 @@
       <button class="ios-btn" id="timerStopBtn" type="button" aria-label="타이머 정지">
         <i data-lucide="square" stroke-width="2" width="16" height="16"></i>
       </button>
-      <button class="ios-btn" id="timerMinuteBtn" type="button" aria-label="1분 추가">+1</button>
+      <div class="timer-minute-stepper" aria-label="타이머 1분 조정">
+        <button class="timer-step-btn" id="timerMinusMinuteBtn" type="button" aria-label="1분 빼기">-</button>
+        <span class="timer-step-label">1</span>
+        <button class="timer-step-btn" id="timerPlusMinuteBtn" type="button" aria-label="1분 추가">+</button>
+      </div>
     </div>
     <p class="timer-status" id="timerStatus">대기 중</p>
   </aside>
@@ -2330,6 +2430,8 @@
       timerRemainingSeconds: 300,
       timerEndAt: 0,
       timerInterval: 0,
+      timerAlarmTimeouts: [],
+      timerAutoResetTimeout: 0,
       timerRunning: false,
       calcExpression: "",
       calcJustSolved: false,
@@ -2341,7 +2443,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.42"
+      version: "0.43"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2480,7 +2582,8 @@
       timerPauseBtn: $("#timerPauseBtn"),
       timerStopBtn: $("#timerStopBtn"),
       timerResetBtn: $("#timerResetBtn"),
-      timerMinuteBtn: $("#timerMinuteBtn"),
+      timerMinusMinuteBtn: $("#timerMinusMinuteBtn"),
+      timerPlusMinuteBtn: $("#timerPlusMinuteBtn"),
       timerStatus: $("#timerStatus"),
       calcDisplay: $("#calcDisplay"),
       calcStatus: $("#calcStatus")
@@ -2613,9 +2716,9 @@
     function getTimerInputSeconds() {
       const minutes = clampInteger(els.timerMinutes.value, 0, 999);
       const seconds = clampInteger(els.timerSeconds.value, 0, 59);
-      els.timerMinutes.value = String(minutes);
-      els.timerSeconds.value = String(seconds);
-      return (minutes * 60) + seconds;
+      const totalSeconds = Math.min(3600, (minutes * 60) + seconds);
+      setTimerInputsFromSeconds(totalSeconds);
+      return totalSeconds;
     }
 
     function setTimerInputsFromSeconds(totalSeconds) {
@@ -2631,13 +2734,18 @@
 
     function updateTimerDisplay() {
       els.timerDisplay.textContent = formatTimerSeconds(app.timerRemainingSeconds);
-      const ratio = app.timerTotalSeconds > 0
-        ? Math.max(0, Math.min(1, app.timerRemainingSeconds / app.timerTotalSeconds))
-        : 0;
-      els.timerProgress.style.width = `${Math.round(ratio * 100)}%`;
+      const sliderMax = app.timerRunning ? Math.max(1, app.timerTotalSeconds) : 3600;
+      const sliderValue = app.timerRemainingSeconds;
+      const ratio = sliderMax > 0 ? Math.max(0, Math.min(1, sliderValue / sliderMax)) : 0;
+      els.timerProgress.max = String(sliderMax);
+      els.timerProgress.value = String(Math.max(0, Math.min(sliderMax, Math.round(sliderValue))));
+      els.timerProgress.disabled = app.timerRunning;
+      els.timerProgress.style.setProperty("--timer-fill", `${Math.round(ratio * 10000) / 100}%`);
       els.timerStartBtn.disabled = app.timerRunning || app.timerRemainingSeconds <= 0;
       els.timerPauseBtn.disabled = !app.timerRunning;
       els.timerStopBtn.disabled = !app.timerRunning && app.timerRemainingSeconds <= 0;
+      els.timerMinusMinuteBtn.disabled = app.timerRunning ? false : app.timerRemainingSeconds <= 0;
+      els.timerPlusMinuteBtn.disabled = app.timerRunning ? app.timerRemainingSeconds >= 3600 : app.timerTotalSeconds >= 3600;
     }
 
     function syncTimerFromInputs() {
@@ -2650,6 +2758,17 @@
       setTimerStatus("타이머 대기 중");
     }
 
+    function syncTimerFromSlider() {
+      if (app.timerRunning) {
+        return;
+      }
+      app.timerTotalSeconds = clampInteger(els.timerProgress.value, 0, 3600);
+      app.timerRemainingSeconds = app.timerTotalSeconds;
+      setTimerInputsFromSeconds(app.timerTotalSeconds);
+      updateTimerDisplay();
+      setTimerStatus("타이머 길이 설정");
+    }
+
     function clearTimerTick() {
       if (app.timerInterval) {
         window.clearInterval(app.timerInterval);
@@ -2657,24 +2776,55 @@
       }
     }
 
-    function playTimerDoneTone() {
+    function clearTimerAlarms() {
+      app.timerAlarmTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      app.timerAlarmTimeouts = [];
+      if (app.timerAutoResetTimeout) {
+        window.clearTimeout(app.timerAutoResetTimeout);
+        app.timerAutoResetTimeout = 0;
+      }
+    }
+
+    function playTimerDoneTone(delay = 0) {
       const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextCtor) {
         return;
       }
-      const audioContext = new AudioContextCtor();
-      const oscillator = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.value = 880;
-      gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.16, audioContext.currentTime + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.5);
-      oscillator.connect(gain);
-      gain.connect(audioContext.destination);
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.52);
-      window.setTimeout(() => audioContext.close(), 700);
+      const timeoutId = window.setTimeout(() => {
+        const audioContext = new AudioContextCtor();
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.16, audioContext.currentTime + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.42);
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.44);
+        window.setTimeout(() => audioContext.close(), 620);
+      }, delay);
+      app.timerAlarmTimeouts.push(timeoutId);
+    }
+
+    function playTimerDoneAlarm() {
+      clearTimerAlarms();
+      for (let index = 0; index < 5; index += 1) {
+        playTimerDoneTone(index * 560);
+      }
+    }
+
+    function scheduleTimerAutoReset() {
+      app.timerAutoResetTimeout = window.setTimeout(() => {
+        if (app.timerRunning || app.timerRemainingSeconds !== 0) {
+          return;
+        }
+        app.timerRemainingSeconds = app.timerTotalSeconds;
+        setTimerInputsFromSeconds(app.timerTotalSeconds);
+        updateTimerDisplay();
+        setTimerStatus("완료 후 자동 초기화");
+      }, 3100);
     }
 
     function finishTimer() {
@@ -2683,7 +2833,8 @@
       app.timerRemainingSeconds = 0;
       updateTimerDisplay();
       setTimerStatus("타이머 완료");
-      playTimerDoneTone();
+      playTimerDoneAlarm();
+      scheduleTimerAutoReset();
     }
 
     function tickTimer() {
@@ -2700,6 +2851,7 @@
       if (app.timerRunning) {
         return;
       }
+      clearTimerAlarms();
       if (app.timerRemainingSeconds <= 0) {
         app.timerTotalSeconds = getTimerInputSeconds();
         app.timerRemainingSeconds = app.timerTotalSeconds;
@@ -2709,7 +2861,8 @@
         updateTimerDisplay();
         return;
       }
-      app.timerTotalSeconds = Math.max(app.timerTotalSeconds, app.timerRemainingSeconds);
+      app.timerTotalSeconds = Math.max(1, app.timerRemainingSeconds);
+      setTimerInputsFromSeconds(app.timerTotalSeconds);
       app.timerEndAt = Date.now() + (app.timerRemainingSeconds * 1000);
       app.timerRunning = true;
       clearTimerTick();
@@ -2731,6 +2884,7 @@
 
     function stopTimer() {
       clearTimerTick();
+      clearTimerAlarms();
       app.timerRunning = false;
       app.timerRemainingSeconds = 0;
       updateTimerDisplay();
@@ -2739,6 +2893,7 @@
 
     function resetTimer() {
       clearTimerTick();
+      clearTimerAlarms();
       app.timerRunning = false;
       app.timerTotalSeconds = getTimerInputSeconds();
       app.timerRemainingSeconds = app.timerTotalSeconds;
@@ -2746,17 +2901,25 @@
       setTimerStatus("타이머 리셋");
     }
 
-    function addTimerMinute() {
-      const addedSeconds = 60;
-      app.timerRemainingSeconds += addedSeconds;
-      app.timerTotalSeconds = Math.max(app.timerTotalSeconds + addedSeconds, app.timerRemainingSeconds);
+    function adjustTimerMinute(direction) {
+      const deltaSeconds = direction * 60;
       if (app.timerRunning) {
-        app.timerEndAt += addedSeconds * 1000;
+        const nextRemaining = Math.max(0, Math.min(3600, app.timerRemainingSeconds + deltaSeconds));
+        const delta = nextRemaining - app.timerRemainingSeconds;
+        app.timerRemainingSeconds = nextRemaining;
+        app.timerEndAt += delta * 1000;
+        app.timerTotalSeconds = Math.max(1, Math.min(3600, app.timerTotalSeconds + delta));
+        if (app.timerRemainingSeconds <= 0) {
+          finishTimer();
+          return;
+        }
       } else {
+        app.timerTotalSeconds = Math.max(0, Math.min(3600, app.timerTotalSeconds + deltaSeconds));
+        app.timerRemainingSeconds = app.timerTotalSeconds;
         setTimerInputsFromSeconds(app.timerRemainingSeconds);
       }
       updateTimerDisplay();
-      setTimerStatus("1분 추가");
+      setTimerStatus(direction > 0 ? "1분 추가" : "1분 감소");
     }
 
     function renderCalculator() {
@@ -6319,6 +6482,7 @@
       renderCalculator();
       els.calcStatus.textContent = "숫자를 눌러 계산하세요.";
       clearTimerTick();
+      clearTimerAlarms();
       app.timerRunning = false;
       els.timerMinutes.value = "5";
       els.timerSeconds.value = "0";
@@ -6665,11 +6829,14 @@
         control.addEventListener("input", syncTimerFromInputs);
         control.addEventListener("change", syncTimerFromInputs);
       });
+      els.timerProgress.addEventListener("input", syncTimerFromSlider);
+      els.timerProgress.addEventListener("change", syncTimerFromSlider);
       els.timerStartBtn.addEventListener("click", startTimer);
       els.timerPauseBtn.addEventListener("click", pauseTimer);
       els.timerStopBtn.addEventListener("click", stopTimer);
       els.timerResetBtn.addEventListener("click", resetTimer);
-      els.timerMinuteBtn.addEventListener("click", addTimerMinute);
+      els.timerMinusMinuteBtn.addEventListener("click", () => adjustTimerMinute(-1));
+      els.timerPlusMinuteBtn.addEventListener("click", () => adjustTimerMinute(1));
 
       document.querySelectorAll("[data-calc-key]").forEach((button) => {
         button.addEventListener("click", () => handleCalculatorKey(button.dataset.calcKey));
