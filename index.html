@@ -23,6 +23,8 @@
       --stroke-strong: rgba(255, 255, 255, 0.34);
       --glass-tint: rgba(18, 20, 27, 0.45);
       --glass-tint-strong: rgba(21, 24, 32, 0.66);
+      --glass-rim: rgba(255, 255, 255, 0.42);
+      --glass-rim-soft: rgba(255, 255, 255, 0.12);
       --shadow: rgba(0, 0, 0, 0.38);
       --ok: #47d18c;
       --warn: #ffd166;
@@ -128,22 +130,25 @@
       isolation: isolate;
       overflow: hidden;
       background:
-        linear-gradient(140deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055) 36%, rgba(255, 255, 255, 0.025)),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.07) 34%, rgba(255, 255, 255, 0.026) 68%),
+        radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.2), transparent 34%),
+        radial-gradient(circle at 94% 100%, rgba(94, 199, 255, 0.11), transparent 36%),
         var(--glass-tint);
       border: 1px solid var(--stroke);
-      backdrop-filter: blur(26px) saturate(1.65) brightness(1.08);
-      -webkit-backdrop-filter: blur(26px) saturate(1.65) brightness(1.08);
+      backdrop-filter: blur(26px) saturate(1.78) brightness(1.1) contrast(1.04);
+      -webkit-backdrop-filter: blur(26px) saturate(1.78) brightness(1.1) contrast(1.04);
       box-shadow:
         0 26px 60px var(--shadow),
-        inset 0 1px 1px rgba(255, 255, 255, 0.42),
+        inset 0 1px 1px var(--glass-rim),
         inset 0 -1px 1px rgba(0, 0, 0, 0.34),
-        inset 14px 18px 34px rgba(255, 255, 255, 0.035);
+        inset 18px 20px 40px rgba(255, 255, 255, 0.048),
+        inset -18px -20px 44px rgba(0, 0, 0, 0.2);
     }
 
     @supports ((backdrop-filter: url("#fluid-glass-distortion")) or (-webkit-backdrop-filter: url("#fluid-glass-distortion"))) {
       .liquid {
-        backdrop-filter: url("#fluid-glass-distortion") blur(22px) saturate(1.75) brightness(1.08);
-        -webkit-backdrop-filter: url("#fluid-glass-distortion") blur(22px) saturate(1.75) brightness(1.08);
+        backdrop-filter: url("#fluid-glass-distortion") blur(22px) saturate(1.86) brightness(1.1) contrast(1.05);
+        -webkit-backdrop-filter: url("#fluid-glass-distortion") blur(22px) saturate(1.86) brightness(1.1) contrast(1.05);
       }
     }
 
@@ -158,21 +163,25 @@
 
     .liquid::before {
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.17), transparent 32%);
+        radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.32), transparent 28%),
+        radial-gradient(circle at 100% 16%, rgba(255, 255, 255, 0.18), transparent 24%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.19), transparent 34%);
       mix-blend-mode: screen;
-      opacity: 0.82;
+      opacity: 0.9;
     }
 
     .liquid::after {
       inset: 1px;
       border-radius: inherit;
       box-shadow:
-        inset 1px 0 0 rgba(255, 255, 255, 0.26),
-        inset -1px 0 0 rgba(255, 255, 255, 0.08),
-        inset 0 -18px 34px rgba(0, 0, 0, 0.2);
+        inset 1px 0 0 var(--glass-rim),
+        inset -1px 0 0 var(--glass-rim-soft),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        inset 0 -18px 34px rgba(0, 0, 0, 0.22);
       background:
-        linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent 16% 84%, rgba(255, 255, 255, 0.11)),
-        linear-gradient(0deg, rgba(255, 255, 255, 0.09), transparent 18% 80%, rgba(255, 255, 255, 0.08));
+        linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 14% 86%, rgba(255, 255, 255, 0.14)),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.1), transparent 18% 80%, rgba(255, 255, 255, 0.1)),
+        linear-gradient(135deg, transparent 0 42%, rgba(255, 255, 255, 0.09) 47%, transparent 54%);
     }
 
     .topbar {
@@ -269,7 +278,9 @@
       transform: translateY(-2px);
       border-color: var(--stroke-strong);
       background:
-        linear-gradient(140deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.07) 36%, rgba(255, 255, 255, 0.03)),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.085) 34%, rgba(255, 255, 255, 0.034) 68%),
+        radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.24), transparent 34%),
+        radial-gradient(circle at 94% 100%, rgba(94, 199, 255, 0.14), transparent 36%),
         var(--glass-tint-strong);
       box-shadow:
         0 32px 70px rgba(0, 0, 0, 0.45),
@@ -1205,12 +1216,32 @@
 <body>
   <svg class="liquid-filter-bank" aria-hidden="true" focusable="false">
     <defs>
-      <filter id="fluid-glass-distortion" x="-18%" y="-18%" width="136%" height="136%" color-interpolation-filters="sRGB">
-        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="9" result="noise"></feTurbulence>
-        <feGaussianBlur in="noise" stdDeviation="8" result="softNoise"></feGaussianBlur>
-        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="18" xChannelSelector="R" yChannelSelector="G" result="refracted"></feDisplacementMap>
-        <feColorMatrix in="refracted" type="matrix" values="1.05 0 0 0 0  0 1.02 0 0 0  0 0 1.08 0 0  0 0 0 1 0" result="chromatic"></feColorMatrix>
-        <feGaussianBlur in="chromatic" stdDeviation="0.35"></feGaussianBlur>
+      <filter id="fluid-glass-distortion" x="-22%" y="-22%" width="144%" height="144%" color-interpolation-filters="sRGB">
+        <feMorphology in="SourceAlpha" operator="erode" radius="1.8" result="innerAlpha"></feMorphology>
+        <feComposite in="SourceAlpha" in2="innerAlpha" operator="out" result="edgeAlpha"></feComposite>
+        <feGaussianBlur in="edgeAlpha" stdDeviation="1.15" result="softEdgeAlpha"></feGaussianBlur>
+
+        <feTurbulence type="fractalNoise" baseFrequency="0.010 0.016" numOctaves="2" seed="17" result="edgeNoise"></feTurbulence>
+        <feGaussianBlur in="edgeNoise" stdDeviation="7" result="softNoise"></feGaussianBlur>
+
+        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="21" xChannelSelector="R" yChannelSelector="G" result="redWarp"></feDisplacementMap>
+        <feOffset in="redWarp" dx="-0.7" dy="-0.25" result="redOffset"></feOffset>
+        <feColorMatrix in="redOffset" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="redChannel"></feColorMatrix>
+
+        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="18" xChannelSelector="R" yChannelSelector="G" result="greenWarp"></feDisplacementMap>
+        <feColorMatrix in="greenWarp" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="greenChannel"></feColorMatrix>
+
+        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="16" xChannelSelector="R" yChannelSelector="G" result="blueWarp"></feDisplacementMap>
+        <feOffset in="blueWarp" dx="0.65" dy="0.25" result="blueOffset"></feOffset>
+        <feColorMatrix in="blueOffset" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="blueChannel"></feColorMatrix>
+
+        <feBlend in="greenChannel" in2="blueChannel" mode="screen" result="cyanChannels"></feBlend>
+        <feBlend in="redChannel" in2="cyanChannels" mode="screen" result="edgeAberration"></feBlend>
+        <feGaussianBlur in="edgeAberration" stdDeviation="0.22" result="softAberration"></feGaussianBlur>
+        <feComposite in="softAberration" in2="softEdgeAlpha" operator="in" result="rimWarp"></feComposite>
+
+        <feComposite in="SourceGraphic" in2="innerAlpha" operator="in" result="clearCenter"></feComposite>
+        <feComposite in="rimWarp" in2="clearCenter" operator="over"></feComposite>
       </filter>
     </defs>
   </svg>
@@ -1845,7 +1876,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.37</span>
+      <span>notoow Utility Kit v0.38</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -1916,7 +1947,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.37"
+      version: "0.38"
     };
 
     const $ = (selector) => document.querySelector(selector);

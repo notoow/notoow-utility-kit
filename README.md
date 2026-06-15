@@ -42,7 +42,7 @@ The application source code in this repository is licensed under the MIT License
 
 The app uses third-party open-source libraries and fonts from public CDNs. Their notices are listed in [NOTICE.md](NOTICE.md).
 
-The UI styling and app code are original to this repository. No third-party design images, UI kit assets, or trademarked platform assets are included in the published source.
+The UI styling and app code are authored in this repository, with external implementation references credited in [NOTICE.md](NOTICE.md). No third-party design images, UI kit assets, or trademarked platform assets are included in the published source.
 
 ## Contact
 

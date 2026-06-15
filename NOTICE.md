@@ -38,6 +38,12 @@ This project is released under the MIT License. It also uses the following third
 - License: SIL Open Font License
 - Use: Interface font
 
+## liquid-glass-react
+
+- Project: https://github.com/rdev/liquid-glass-react
+- License: MIT License
+- Use: Reference for SVG-filter glass refraction concepts; no source assets or displacement maps are bundled
+
 ## Notes
 
 The published source does not include external UI kit files, generated screenshots, or archived assets. Those local files are excluded with `.gitignore`.
