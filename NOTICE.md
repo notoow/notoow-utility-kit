@@ -26,6 +26,12 @@ This project is released under the MIT License. It also uses the following third
 - License: LGPL-3.0
 - Use: Browser-side MP3 encoding
 
+## ffmpeg.wasm
+
+- Project: https://github.com/ffmpegwasm/ffmpeg.wasm
+- License: MIT License
+- Use: Browser-side MP4/GIF video conversion. The small wrapper and worker files in `vendor/ffmpeg/` come from `@ffmpeg/ffmpeg@0.12.10`; the FFmpeg core is loaded from a public CDN at runtime.
+
 ## Archivo
 
 - Project: https://fonts.google.com/specimen/Archivo

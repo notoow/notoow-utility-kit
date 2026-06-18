@@ -5,6 +5,7 @@ A single-file browser utility app with a polished translucent glass interface.
 ## Features
 
 - First-position batch PNG conversion for non-PNG image files, including broad extension coverage such as AVIF, WebP, JPG/JPEG, GIF, BMP, SVG, HEIC/HEIF, TIFF, ICO, JP2, PSD, RAW camera formats, and every page of PDF files
+- Browser-side video conversion to H.264 MP4 or GIF for MP4, MOV, MKV, WEBM, AVI, GIF, and related video formats
 - Batch audio and video to MP3 conversion with ZIP bundling for multiple outputs
 - QR code generation with color themes, an invert toggle, and PNG export
 - Batch file encryption and decryption in the browser with AES-GCM
@@ -14,7 +15,7 @@ A single-file browser utility app with a polished translucent glass interface.
 - Image-to-PDF generation for multiple JPG, PNG, WebP, GIF, BMP, AVIF, and SVG files
 - Text and multi-file SHA checksum generation with copy and TXT export
 - Base64 text encode/decode plus file-to-Base64 and decoded binary export
-- Automatic ZIP bundling when PNG, resized-image, or cleaned-image tools produce multiple output files
+- Automatic ZIP bundling when converter tools produce multiple output files
 - Automatic prefixed output names with an optional browser-granted save folder
 - Quick links for browser and Windows default-app settings
 - Persistent local settings for cleanup reminders and URL copy behavior
@@ -24,7 +25,7 @@ A single-file browser utility app with a polished translucent glass interface.
 
 ## Run Locally
 
-Open `index.html` directly in a browser, or serve the folder with a local static server:
+Serve the folder with a local static server. This is recommended for the MP4/GIF converter because FFmpeg runs through Web Worker and WebAssembly files:
 
 ```powershell
 python -m http.server 4173 --bind 127.0.0.1

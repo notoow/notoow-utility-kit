@@ -661,11 +661,11 @@
       right: clamp(14px, 3vw, 34px);
       bottom: clamp(14px, 3vw, 30px);
       z-index: 30;
-      width: min(350px, calc(100vw - 28px));
-      padding: 14px;
-      border-radius: 28px;
+      width: min(292px, calc(100vw - 28px));
+      padding: 12px;
+      border-radius: 24px;
       display: grid;
-      gap: 12px;
+      gap: 9px;
     }
 
     .timer-head {
@@ -688,7 +688,7 @@
 
     .timer-display {
       font-family: "Geist Mono", "SFMono-Regular", Consolas, monospace;
-      font-size: clamp(34px, 8vw, 48px);
+      font-size: clamp(30px, 6vw, 40px);
       font-weight: 820;
       line-height: 0.95;
       letter-spacing: 0;
@@ -711,7 +711,7 @@
     }
 
     .timer-inputs .ios-input {
-      height: 38px;
+      height: 34px;
       text-align: center;
       border-radius: 14px;
       padding: 0 8px;
@@ -791,7 +791,7 @@
 
     .timer-actions .ios-btn {
       min-width: 0;
-      height: 40px;
+      height: 36px;
       justify-content: center;
       padding: 0;
     }
@@ -800,7 +800,7 @@
       display: grid;
       grid-template-columns: 1fr 0.8fr 1fr;
       min-width: 0;
-      height: 40px;
+      height: 36px;
       overflow: hidden;
       border-radius: 16px;
       border: 1px solid rgba(255, 255, 255, 0.14);
@@ -1329,25 +1329,29 @@
 
     .converter-adjuster {
       display: grid;
-      grid-template-columns: 26px minmax(0, 1fr);
-      grid-template-rows: minmax(150px, auto) auto;
-      gap: 8px;
+      grid-template-columns: 58px minmax(0, 1fr);
+      grid-template-rows: minmax(168px, auto) 42px;
+      column-gap: 12px;
+      row-gap: 10px;
       align-items: stretch;
+      min-width: 0;
     }
 
     .converter-adjuster .preview-box {
       grid-column: 2;
       grid-row: 1;
+      min-width: 0;
+      min-height: 168px;
     }
 
     .ratio-control {
-      display: grid;
-      gap: 6px;
+      display: flex;
+      gap: 8px;
       color: rgba(247, 248, 251, 0.72);
       font-size: 11px;
       font-weight: 760;
       line-height: 1.15;
-      transition: opacity 0.16s ease;
+      min-width: 0;
     }
 
     .ratio-control span {
@@ -1359,15 +1363,16 @@
     }
 
     .ratio-control input {
-      width: 100%;
       accent-color: #5ec7ff;
     }
 
     .ratio-control-y {
       grid-column: 1;
       grid-row: 1;
-      justify-items: center;
       align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      padding: 8px 0;
     }
 
     .ratio-control-y span {
@@ -1376,14 +1381,25 @@
     }
 
     .ratio-control-y input {
-      width: 150px;
-      transform: rotate(-90deg);
-      transform-origin: center;
+      width: 22px;
+      height: 128px;
+      min-height: 0;
+      writing-mode: vertical-lr;
+      direction: rtl;
+      -webkit-appearance: slider-vertical;
+      appearance: slider-vertical;
     }
 
     .ratio-control-x {
-      grid-column: 2;
+      grid-column: 1 / -1;
       grid-row: 2;
+      align-items: center;
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr);
+    }
+
+    .ratio-control-x input {
+      width: 100%;
     }
 
     .converter-adjuster:not(.is-adjustable) .ratio-control {
@@ -1712,6 +1728,62 @@
             <button class="ios-btn primary" id="saveConvertedBtn" type="button">
               <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
               PNG 저장
+            </button>
+          </div>
+        </article>
+
+        <article class="widget liquid" data-liquid aria-labelledby="videoTitle">
+          <div class="widget-header">
+            <div class="icon-box cyan">
+              <i data-lucide="clapperboard" stroke-width="2.5" width="20" height="20"></i>
+            </div>
+            <div class="widget-title">
+              <strong id="videoTitle">MP4/GIF 변환기</strong>
+              <span>H.264 MP4 또는 GIF 다운로드</span>
+            </div>
+          </div>
+
+          <input class="hidden-input" id="videoInput" type="file" multiple accept="video/*,.mp4,.webm,.mov,.m4v,.mkv,.avi,.wmv,.flv,.ogv,.3gp,.mpeg,.mpg,.ts,.mts,.m2ts,.gif">
+          <div class="paste-zone media-zone" id="videoZone" tabindex="0">
+            <div>
+              <strong>동영상을 놓거나 선택</strong>
+              <span>MP4 MOV MKV WEBM AVI GIF 등 · 브라우저에서 변환</span>
+            </div>
+            <div class="converter-file-list" id="videoFileList" aria-live="polite"></div>
+          </div>
+
+          <div class="segmented" data-segment-group="videoFormat" role="tablist" aria-label="영상 변환 형식">
+            <button class="segment active" type="button" data-value="mp4">MP4</button>
+            <button class="segment" type="button" data-value="gif">GIF</button>
+          </div>
+
+          <div class="file-details" id="videoDetails">
+            <strong>변환 대기</strong>
+            <span>첫 변환 때 FFmpeg 코어를 불러옵니다. 큰 영상은 시간이 걸릴 수 있습니다.</span>
+          </div>
+          <div class="media-activity" id="videoActivity" aria-live="polite">
+            <span class="converter-spinner" aria-hidden="true"></span>
+            <span id="videoActivityText">대기 중</span>
+          </div>
+          <div class="preview-box" id="videoPreviewBox">
+            <span class="preview-empty">미리보기 없음</span>
+            <video id="videoPreview" controls playsinline preload="metadata"></video>
+            <img id="videoGifPreview" alt="변환된 GIF 미리보기">
+          </div>
+
+          <p class="status" id="videoStatus" aria-live="polite">동영상을 선택한 뒤 MP4 또는 GIF로 변환하세요.</p>
+          <div class="action-row">
+            <button class="ios-btn" id="chooseVideoFileBtn" type="button">
+              <i data-lucide="film" stroke-width="2" width="16" height="16"></i>
+              파일 선택
+            </button>
+            <button class="ios-btn primary" id="convertVideoBtn" type="button">
+              <i data-lucide="wand-sparkles" stroke-width="2" width="16" height="16"></i>
+              변환
+            </button>
+            <button class="ios-btn" id="saveVideoBtn" type="button">
+              <i data-lucide="download" stroke-width="2" width="16" height="16"></i>
+              저장
             </button>
           </div>
         </article>
@@ -2318,7 +2390,7 @@
     </section>
 
     <footer class="footer liquid" data-liquid>
-      <span>notoow Utility Kit v0.43</span>
+      <span>notoow Utility Kit v0.44</span>
       <div class="footer-links">
         <a href="mailto:antcow0706@gmail.com">
           <i data-lucide="mail" stroke-width="2" width="14" height="14"></i>
@@ -2408,6 +2480,13 @@
       pdfDebounce: 0,
       pdfBlob: null,
       pdfOutputName: "",
+      videoFormat: "mp4",
+      videoItems: [],
+      activeVideoId: null,
+      videoRunId: 0,
+      videoProcessing: false,
+      ffmpeg: null,
+      ffmpegReady: null,
       mp3File: null,
       mp3Blob: null,
       mp3Url: "",
@@ -2443,7 +2522,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.43"
+      version: "0.44"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2490,6 +2569,19 @@
       chooseFolderBtn: $("#chooseFolderBtn"),
       saveConvertedBtn: $("#saveConvertedBtn"),
       folderState: $("#folderState"),
+      videoInput: $("#videoInput"),
+      videoZone: $("#videoZone"),
+      videoFileList: $("#videoFileList"),
+      videoDetails: $("#videoDetails"),
+      videoActivity: $("#videoActivity"),
+      videoActivityText: $("#videoActivityText"),
+      videoPreviewBox: $("#videoPreviewBox"),
+      videoPreview: $("#videoPreview"),
+      videoGifPreview: $("#videoGifPreview"),
+      videoStatus: $("#videoStatus"),
+      chooseVideoFileBtn: $("#chooseVideoFileBtn"),
+      convertVideoBtn: $("#convertVideoBtn"),
+      saveVideoBtn: $("#saveVideoBtn"),
       resizeInput: $("#resizeInput"),
       resizeZone: $("#resizeZone"),
       resizeFileList: $("#resizeFileList"),
@@ -5455,6 +5547,414 @@
       }
     }
 
+    const FFMPEG_SCRIPT_URL = "./vendor/ffmpeg/ffmpeg.js";
+    const FFMPEG_CORE_BASE_URL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+
+    function setVideoDetails(title, lines) {
+      els.videoDetails.replaceChildren();
+      const strong = document.createElement("strong");
+      strong.textContent = title;
+      els.videoDetails.appendChild(strong);
+      lines.forEach((line) => {
+        const span = document.createElement("span");
+        span.textContent = line;
+        els.videoDetails.appendChild(span);
+      });
+    }
+
+    function setVideoActivity(state, text) {
+      els.videoActivity.className = `media-activity${state ? ` is-${state}` : ""}`;
+      els.videoActivityText.textContent = text;
+    }
+
+    function isGifFile(file) {
+      return file.type === "image/gif" || converterExtension(file) === "gif";
+    }
+
+    function isSupportedVideoConvertFile(file) {
+      const extension = converterExtension(file);
+      return file.type.startsWith("video/")
+        || isGifFile(file)
+        || ["mp4", "webm", "mov", "m4v", "mkv", "avi", "wmv", "flv", "ogv", "3gp", "mpeg", "mpg", "ts", "mts", "m2ts"].includes(extension);
+    }
+
+    function revokeVideoUrls(items = app.videoItems) {
+      items.forEach((item) => {
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+          item.previewUrl = "";
+        }
+        if (item.url) {
+          URL.revokeObjectURL(item.url);
+          item.url = "";
+        }
+      });
+    }
+
+    function clearVideoOutput() {
+      app.videoItems.forEach((item) => {
+        if (item.url) {
+          URL.revokeObjectURL(item.url);
+          item.url = "";
+        }
+        item.blob = null;
+        item.outputName = "";
+        item.detail = "";
+        item.status = "queued";
+        item.error = "";
+      });
+    }
+
+    function clearVideoPreview() {
+      els.videoPreview.removeAttribute("src");
+      els.videoPreview.load();
+      els.videoGifPreview.removeAttribute("src");
+      els.videoPreviewBox.classList.remove("has-video", "has-image");
+    }
+
+    function getActiveVideoItem() {
+      return app.videoItems.find((item) => item.id === app.activeVideoId) || null;
+    }
+
+    function videoOutputLabel() {
+      return app.videoFormat === "gif" ? "GIF" : "MP4";
+    }
+
+    function videoItemMeta(item) {
+      if (item.status === "error") {
+        return item.error;
+      }
+      if (item.blob) {
+        return `${item.outputName} · ${formatBytes(item.blob.size)}${item.detail ? ` · ${item.detail}` : ""}`;
+      }
+      const extension = converterExtension(item.file);
+      return `${item.kind === "gif" ? "GIF" : "동영상"} · ${formatBytes(item.file.size)}${extension ? ` · ${extension.toUpperCase()}` : ""}`;
+    }
+
+    function renderVideoList() {
+      els.videoFileList.replaceChildren();
+      app.videoItems.forEach((item) => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = `converter-file-row ${item.status}${item.id === app.activeVideoId ? " active" : ""}`;
+        row.dataset.id = item.id;
+
+        const textWrap = document.createElement("span");
+        textWrap.className = "converter-file-text";
+        const name = document.createElement("span");
+        name.className = "converter-file-name";
+        name.textContent = item.file.name;
+        const meta = document.createElement("span");
+        meta.className = "converter-file-meta";
+        meta.textContent = videoItemMeta(item);
+        textWrap.append(name, meta);
+
+        const state = document.createElement("span");
+        state.className = "converter-file-state";
+        state.textContent = converterStateLabel(item.status);
+
+        row.append(textWrap, state);
+        row.addEventListener("click", () => {
+          app.activeVideoId = item.id;
+          updateVideoPreview();
+          renderVideoList();
+        });
+        els.videoFileList.appendChild(row);
+      });
+    }
+
+    function updateVideoPreview() {
+      const item = getActiveVideoItem() || app.videoItems[0] || null;
+      clearVideoPreview();
+      if (!item) {
+        return;
+      }
+
+      app.activeVideoId = item.id;
+      const previewUrl = item.url || item.previewUrl;
+      const showingGif = item.url ? item.outputName.toLowerCase().endsWith(".gif") : item.kind === "gif";
+      if (previewUrl) {
+        if (showingGif) {
+          els.videoGifPreview.src = previewUrl;
+          els.videoPreviewBox.classList.add("has-image");
+        } else {
+          els.videoPreview.src = previewUrl;
+          els.videoPreviewBox.classList.add("has-video");
+        }
+      }
+
+      const title = item.status === "done" ? `${videoOutputLabel()} 변환 완료` : "선택한 영상";
+      const lines = item.status === "done"
+        ? [`${item.outputName} (${formatBytes(item.blob.size)})`, item.detail || videoOutputLabel()]
+        : [`${item.file.name} (${formatBytes(item.file.size)})`, item.file.type || converterExtension(item.file).toUpperCase()];
+      setVideoDetails(title, lines);
+    }
+
+    function resetVideoState() {
+      app.videoRunId += 1;
+      revokeVideoUrls();
+      app.videoItems = [];
+      app.activeVideoId = null;
+      app.videoProcessing = false;
+      els.videoInput.value = "";
+      renderVideoList();
+      clearVideoPreview();
+      setVideoDetails("변환 대기", ["첫 변환 때 FFmpeg 코어를 불러옵니다. 큰 영상은 시간이 걸릴 수 있습니다."]);
+      setVideoActivity("", "대기 중");
+      setStatus(els.videoStatus, "동영상을 선택한 뒤 MP4 또는 GIF로 변환하세요.");
+    }
+
+    async function handleVideoPaste(event) {
+      const files = Array.from(event.clipboardData?.items || [])
+        .filter((item) => item.kind === "file")
+        .map((item) => item.getAsFile())
+        .filter(Boolean)
+        .filter(isSupportedVideoConvertFile);
+      if (!files.length) {
+        setStatus(els.videoStatus, "붙여넣은 데이터에서 변환 가능한 영상을 찾지 못했습니다.", "warn");
+        return;
+      }
+      event.preventDefault();
+      await selectVideoFiles(files);
+    }
+
+    async function selectVideoFiles(fileList) {
+      const files = Array.from(fileList || []).filter(Boolean);
+      if (!files.length) {
+        return;
+      }
+      const supportedFiles = files.filter(isSupportedVideoConvertFile);
+      const rejectedCount = files.length - supportedFiles.length;
+      if (!supportedFiles.length) {
+        resetVideoState();
+        setStatus(els.videoStatus, "MP4, MOV, MKV, WEBM, AVI, GIF 같은 영상 파일을 선택하세요.", "error");
+        return;
+      }
+
+      resetVideoState();
+      app.videoItems = supportedFiles.map((file, index) => ({
+        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+        file,
+        kind: isGifFile(file) ? "gif" : "video",
+        status: "queued",
+        previewUrl: URL.createObjectURL(file),
+        blob: null,
+        url: "",
+        outputName: "",
+        detail: "",
+        error: ""
+      }));
+      app.activeVideoId = app.videoItems[0]?.id || null;
+      renderVideoList();
+      updateVideoPreview();
+
+      const skipped = rejectedCount ? ` · ${rejectedCount}개 제외` : "";
+      setVideoActivity("", "준비 완료");
+      setStatus(els.videoStatus, `${app.videoItems.length}개 파일 준비 완료. ${videoOutputLabel()} 변환을 실행하세요.${skipped}`, "ok");
+    }
+
+    async function fetchBinaryFile(file) {
+      return new Uint8Array(await file.arrayBuffer());
+    }
+
+    async function toFfmpegBlobUrl(url, mimeType) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`FFmpeg 파일을 불러오지 못했습니다. (${response.status})`);
+      }
+      const blob = await response.blob();
+      return URL.createObjectURL(new Blob([blob], { type: mimeType }));
+    }
+
+    async function loadFfmpeg() {
+      if (app.ffmpeg) {
+        return app.ffmpeg;
+      }
+      if (!app.ffmpegReady) {
+        app.ffmpegReady = (async () => {
+          await loadScriptOnce(FFMPEG_SCRIPT_URL, "FFmpegWASM");
+          const FFmpeg = window.FFmpegWASM?.FFmpeg;
+          if (!FFmpeg) {
+            throw new Error("FFmpeg 변환기를 초기화하지 못했습니다.");
+          }
+          const ffmpeg = new FFmpeg();
+          ffmpeg.on("progress", ({ progress }) => {
+            if (!app.videoProcessing) {
+              return;
+            }
+            const percent = Math.max(0, Math.min(99, Math.round((progress || 0) * 100)));
+            setVideoActivity("busy", `${percent}% 변환 중`);
+          });
+          await ffmpeg.load({
+            coreURL: await toFfmpegBlobUrl(`${FFMPEG_CORE_BASE_URL}/ffmpeg-core.js`, "text/javascript"),
+            wasmURL: await toFfmpegBlobUrl(`${FFMPEG_CORE_BASE_URL}/ffmpeg-core.wasm`, "application/wasm")
+          });
+          app.ffmpeg = ffmpeg;
+          return ffmpeg;
+        })().catch((error) => {
+          app.ffmpegReady = null;
+          throw error;
+        });
+      }
+      return app.ffmpegReady;
+    }
+
+    function videoConvertArgs(format, inputName, outputName) {
+      if (format === "gif") {
+        return [
+          "-y",
+          "-i", inputName,
+          "-vf", "fps=12,scale=720:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+          "-loop", "0",
+          outputName
+        ];
+      }
+      return [
+        "-y",
+        "-i", inputName,
+        "-map", "0:v:0",
+        "-map", "0:a?",
+        "-vf", "scale=trunc(max(iw\\,2)/2)*2:trunc(max(ih\\,2)/2)*2",
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        "-c:a", "aac",
+        "-b:a", "160k",
+        "-shortest",
+        outputName
+      ];
+    }
+
+    async function convertVideoItem(ffmpeg, item, format, usedNames) {
+      const extension = converterExtension(item.file) || (item.kind === "gif" ? "gif" : "video");
+      const inputName = `input-${item.id}.${extension.replace(/[^a-z0-9]/gi, "") || "video"}`;
+      const outputName = `output-${item.id}.${format}`;
+      await ffmpeg.writeFile(inputName, await fetchBinaryFile(item.file));
+      try {
+        await ffmpeg.exec(videoConvertArgs(format, inputName, outputName));
+        const data = await ffmpeg.readFile(outputName);
+        const blob = new Blob([data], { type: format === "gif" ? "image/gif" : "video/mp4" });
+        return {
+          blob,
+          outputName: uniqueOutputName(`${sanitizeFilename(item.file.name)}.${format}`, usedNames),
+          detail: format === "gif" ? "GIF" : "H.264 MP4"
+        };
+      } finally {
+        await ffmpeg.deleteFile(inputName).catch(() => {});
+        await ffmpeg.deleteFile(outputName).catch(() => {});
+      }
+    }
+
+    async function convertVideoFiles() {
+      if (!app.videoItems.length) {
+        setStatus(els.videoStatus, "먼저 동영상 파일을 선택하세요.", "warn");
+        els.videoZone.focus();
+        return;
+      }
+      if (app.videoProcessing) {
+        return;
+      }
+
+      const runId = app.videoRunId + 1;
+      app.videoRunId = runId;
+      app.videoProcessing = true;
+      clearVideoOutput();
+      renderVideoList();
+      setBusy(els.convertVideoBtn, true, "변환 중");
+      setVideoActivity("busy", "FFmpeg 코어 로드 중");
+      setStatus(els.videoStatus, `${videoOutputLabel()} 변환기를 준비하고 있습니다.`, "warn");
+
+      const total = app.videoItems.length;
+      const usedNames = new Set();
+      let completed = 0;
+      let failed = 0;
+
+      try {
+        const ffmpeg = await loadFfmpeg();
+        for (const item of app.videoItems) {
+          if (runId !== app.videoRunId) {
+            return;
+          }
+
+          item.status = "busy";
+          item.error = "";
+          app.activeVideoId = item.id;
+          updateVideoPreview();
+          renderVideoList();
+          setVideoActivity("busy", `${completed + 1}/${total} 변환 중`);
+
+          try {
+            const result = await convertVideoItem(ffmpeg, item, app.videoFormat, usedNames);
+            if (runId !== app.videoRunId) {
+              return;
+            }
+            item.blob = result.blob;
+            item.url = URL.createObjectURL(result.blob);
+            item.outputName = result.outputName;
+            item.detail = result.detail;
+            item.status = "done";
+            completed += 1;
+          } catch (error) {
+            item.status = "error";
+            item.error = error.message || `${videoOutputLabel()} 변환 실패`;
+            failed += 1;
+          }
+
+          updateVideoPreview();
+          renderVideoList();
+        }
+
+        const convertedItems = app.videoItems.filter((item) => item.status === "done" && item.blob);
+        if (!convertedItems.length) {
+          setVideoActivity("error", "오류");
+          setStatus(els.videoStatus, `${videoOutputLabel()}로 변환된 파일이 없습니다.`, "error");
+        } else {
+          const label = videoOutputLabel();
+          setVideoActivity(failed ? "error" : "done", failed ? `${completed}/${total} 완료 · ${failed} 실패` : `${completed}개 ${label}`);
+          setStatus(
+            els.videoStatus,
+            failed ? `${completed}개 ${label} 준비, ${failed}개 실패` : `${completed}개 ${label} 변환 완료`,
+            failed ? "warn" : "ok"
+          );
+          const saved = await autoSaveEntries(
+            convertedItems.map((item) => ({ name: item.outputName, blob: item.blob })),
+            `video-results-${Date.now()}.zip`,
+            els.videoStatus,
+            label
+          );
+          if (failed && saved) {
+            setStatus(els.videoStatus, `${completed}개 ${label} 저장 완료, ${failed}개 실패`, "warn");
+          }
+        }
+      } catch (error) {
+        setVideoActivity("error", "로드 실패");
+        setStatus(els.videoStatus, error.message || "영상 변환기를 불러오지 못했습니다.", "error");
+      } finally {
+        app.videoProcessing = false;
+        setBusy(els.convertVideoBtn, false);
+      }
+    }
+
+    async function saveVideo() {
+      const convertedItems = app.videoItems.filter((item) => item.status === "done" && item.blob);
+      if (!convertedItems.length) {
+        setStatus(els.videoStatus, `먼저 ${videoOutputLabel()}로 변환하세요.`, "warn");
+        return;
+      }
+
+      try {
+        const saved = await downloadEntries(
+          convertedItems.map((item) => ({ name: item.outputName, blob: item.blob })),
+          `video-results-${Date.now()}.zip`
+        );
+        setStatus(els.videoStatus, savedResultMessage(saved, videoOutputLabel()), "ok");
+      } catch (error) {
+        setStatus(els.videoStatus, error.message || "영상 저장에 실패했습니다.", "error");
+      }
+    }
+
     const LAMEJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js";
 
     function setMp3Details(title, lines) {
@@ -6467,6 +6967,7 @@
         segment.classList.toggle("active", segment.dataset.value === app.qrTheme);
       });
       resetConverterState();
+      resetVideoState();
       resetResizeState();
       resetCleanState();
       resetPdfState();
@@ -6515,6 +7016,15 @@
         resetBase64File();
         setBase64Mode(button.dataset.value);
         computeBase64();
+      }
+
+      if (groupName === "videoFormat") {
+        app.videoFormat = button.dataset.value === "gif" ? "gif" : "mp4";
+        clearVideoOutput();
+        updateVideoPreview();
+        renderVideoList();
+        setVideoActivity(app.videoItems.length ? "" : "", app.videoItems.length ? `${videoOutputLabel()} 준비` : "대기 중");
+        setStatus(els.videoStatus, app.videoItems.length ? `${videoOutputLabel()} 출력으로 설정했습니다. 변환을 실행하세요.` : `${videoOutputLabel()} 출력으로 설정했습니다.`, "ok");
       }
     }
 
@@ -6614,6 +7124,40 @@
       [els.converterScaleX, els.converterScaleY].forEach((control) => {
         control.addEventListener("input", queueConverterScaleApply);
         control.addEventListener("change", queueConverterScaleApply);
+      });
+
+      els.chooseVideoFileBtn.addEventListener("click", () => els.videoInput.click());
+      els.videoInput.addEventListener("change", () => selectVideoFiles(els.videoInput.files));
+      els.videoZone.addEventListener("paste", handleVideoPaste);
+      document.addEventListener("paste", (event) => {
+        if (event.defaultPrevented) {
+          return;
+        }
+        if (document.activeElement === els.videoZone) {
+          handleVideoPaste(event);
+        }
+      });
+      els.convertVideoBtn.addEventListener("click", convertVideoFiles);
+      els.saveVideoBtn.addEventListener("click", saveVideo);
+      ["dragenter", "dragover"].forEach((eventName) => {
+        els.videoZone.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          els.videoZone.classList.add("active");
+        });
+      });
+      ["dragleave", "drop"].forEach((eventName) => {
+        els.videoZone.addEventListener(eventName, () => els.videoZone.classList.remove("active"));
+      });
+      els.videoZone.addEventListener("click", () => els.videoInput.click());
+      els.videoZone.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          els.videoInput.click();
+        }
+      });
+      els.videoZone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        selectVideoFiles(event.dataTransfer.files);
       });
 
       els.chooseResizeFileBtn.addEventListener("click", () => els.resizeInput.click());
@@ -6856,6 +7400,7 @@
       bindEvents();
       setFileMode(app.fileMode);
       setConverterActivity("", "대기 중");
+      setVideoActivity("", "대기 중");
       setResizeActivity("", "대기 중");
       els.resizeQualityValue.textContent = `${els.resizeQuality.value}%`;
       setCleanActivity("", "대기 중");
