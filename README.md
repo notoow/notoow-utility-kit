@@ -4,7 +4,7 @@ A single-file browser utility app with a polished translucent glass interface.
 
 ## Features
 
-- First-position batch PNG conversion for non-PNG image files, including broad extension coverage such as AVIF, WebP, JPG/JPEG, GIF, BMP, SVG, HEIC/HEIF, TIFF, ICO, JP2, PSD, RAW camera formats, and every page of PDF files
+- First-position batch PNG conversion for image files, including PNG re-save/ratio adjustment, AVIF, WebP, JPG/JPEG, GIF, BMP, SVG, HEIC/HEIF, TIFF, ICO, JP2, PSD, RAW camera formats, and every page of PDF files
 - Browser-side video conversion to H.264 MP4 or GIF for MP4, MOV, MKV, WEBM, AVI, GIF, and related video formats
 - Batch audio and video to MP3 conversion with ZIP bundling for multiple outputs
 - QR code generation with color themes, an invert toggle, and PNG export
@@ -13,6 +13,7 @@ A single-file browser utility app with a polished translucent glass interface.
 - Batch image resize and compression with JPG, WebP, and PNG output
 - Batch image metadata cleanup with JPG, WebP, PNG, and ZIP export
 - Image-to-PDF generation for multiple JPG, PNG, WebP, GIF, BMP, AVIF, and SVG files
+- Shared image upload propagation across the PNG converter, image resizer, image cleaner, and image-to-PDF tool
 - Text and multi-file SHA checksum generation with copy and TXT export
 - Base64 text encode/decode plus file-to-Base64 and decoded binary export
 - Automatic ZIP bundling when converter tools produce multiple output files
