@@ -2362,6 +2362,7 @@
                 <option value="SHA-1">SHA-1</option>
               </select>
             </label>
+            <input class="ios-input" id="hashExpected" type="text" placeholder="검증할 해시값 붙여넣기 (선택)">
           </div>
 
           <input class="hidden-input" id="hashInput" type="file" multiple>
@@ -2406,6 +2407,7 @@
           </div>
 
           <div class="segmented" data-segment-group="base64Mode" role="tablist" aria-label="Base64 처리 방식">
+            <button class="segment" type="button" data-value="auto">자동</button>
             <button class="segment active" type="button" data-value="encode">인코딩</button>
             <button class="segment" type="button" data-value="decode">디코딩</button>
           </div>
@@ -2629,6 +2631,7 @@
       hashRunId: 0,
       hashDebounce: 0,
       base64Mode: "encode",
+      base64ResolvedMode: "encode",
       base64File: null,
       base64Bytes: null,
       base64RunId: 0,
@@ -2650,7 +2653,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.46"
+      version: "0.47"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2768,6 +2771,7 @@
       saveMp3Btn: $("#saveMp3Btn"),
       hashText: $("#hashText"),
       hashAlgorithm: $("#hashAlgorithm"),
+      hashExpected: $("#hashExpected"),
       hashInput: $("#hashInput"),
       hashZone: $("#hashZone"),
       hashFileList: $("#hashFileList"),
@@ -6899,6 +6903,69 @@
       return els.hashAlgorithm.value || "SHA-256";
     }
 
+    function normalizeExpectedHashInput() {
+      const value = (els.hashExpected.value || "").trim();
+      if (!value) {
+        return "";
+      }
+      const stripped = value.replace(/^(?:sha-?(?:1|256|384|512))\s*[:=]\s*/i, "").replace(/^0x/i, "");
+      const inlineMatch = stripped.match(/\b[a-f0-9]{128}\b|\b[a-f0-9]{96}\b|\b[a-f0-9]{64}\b|\b[a-f0-9]{40}\b/i);
+      return (inlineMatch ? inlineMatch[0] : stripped.replace(/\s+/g, "")).toLowerCase();
+    }
+
+    function detectHashAlgorithmFromExpected() {
+      const expected = normalizeExpectedHashInput();
+      if (!/^[a-f0-9]+$/i.test(expected)) {
+        return "";
+      }
+      return {
+        40: "SHA-1",
+        64: "SHA-256",
+        96: "SHA-384",
+        128: "SHA-512"
+      }[expected.length] || "";
+    }
+
+    function adoptExpectedHashAlgorithm() {
+      const algorithm = detectHashAlgorithmFromExpected();
+      if (algorithm && els.hashAlgorithm.value !== algorithm) {
+        els.hashAlgorithm.value = algorithm;
+      }
+      return algorithm;
+    }
+
+    function compareExpectedHash(hash) {
+      const hasExpected = Boolean((els.hashExpected.value || "").trim());
+      if (!hasExpected) {
+        return { active: false, valid: true, ok: false, label: "", lines: [], status: "", type: "" };
+      }
+
+      const expected = normalizeExpectedHashInput();
+      const algorithm = detectHashAlgorithmFromExpected();
+      if (!expected || !/^[a-f0-9]+$/i.test(expected) || !algorithm) {
+        return {
+          active: true,
+          valid: false,
+          ok: false,
+          label: "형식 오류",
+          lines: ["검증: 기준 해시 형식 오류"],
+          status: "검증할 해시값 형식을 다시 확인하세요.",
+          type: "warn"
+        };
+      }
+
+      const ok = expected === hash.toLowerCase();
+      return {
+        active: true,
+        valid: true,
+        ok,
+        label: ok ? "일치" : "불일치",
+        lines: [`검증: ${ok ? "일치" : "불일치"}`, `기준: ${expected}`],
+        status: ok ? "계산한 해시가 기준값과 일치합니다." : "계산한 해시가 기준값과 다릅니다.",
+        type: ok ? "ok" : "warn"
+      };
+    }
+
     async function digestHexFromBuffer(buffer, algorithm) {
       const hash = await crypto.subtle.digest(algorithm, buffer);
       return bytesToHex(new Uint8Array(hash));
@@ -6913,7 +6980,8 @@
         return item.error;
       }
       if (item.hash) {
-        return `${item.algorithm} · ${item.hash.slice(0, 18)}...`;
+        const verification = item.match ? ` · ${item.match}` : "";
+        return `${item.algorithm}${verification} · ${item.hash.slice(0, 18)}...`;
       }
       return `${formatBytes(item.file.size)} · ${item.file.type || "알 수 없음"}`;
     }
@@ -6964,6 +7032,7 @@
         status: "queued",
         hash: "",
         algorithm: "",
+        match: "",
         error: ""
       }));
       renderHashList();
@@ -6980,6 +7049,18 @@
       }, 180);
     }
 
+    function queueHashVerification() {
+      window.clearTimeout(app.hashDebounce);
+      app.hashDebounce = window.setTimeout(() => {
+        adoptExpectedHashAlgorithm();
+        if (app.hashItems.length) {
+          computeFileHashes();
+        } else {
+          computeTextHash();
+        }
+      }, 180);
+    }
+
     async function computeTextHash() {
       if (!window.crypto || !crypto.subtle) {
         setStatus(els.hashStatus, "이 브라우저는 WebCrypto를 지원하지 않습니다.", "error");
@@ -6993,12 +7074,18 @@
         return;
       }
 
+      adoptExpectedHashAlgorithm();
       const algorithm = getHashAlgorithm();
       try {
         const bytes = new TextEncoder().encode(value);
         const hash = await digestHexFromBuffer(bytes, algorithm);
-        setHashOutput([`${algorithm}`, hash]);
-        setStatus(els.hashStatus, "텍스트 해시를 계산했습니다.", "ok");
+        const verification = compareExpectedHash(hash);
+        setHashOutput([`${algorithm}`, hash, ...verification.lines]);
+        setStatus(
+          els.hashStatus,
+          verification.active ? verification.status : "텍스트 해시를 계산했습니다.",
+          verification.active ? verification.type : "ok"
+        );
       } catch (error) {
         setStatus(els.hashStatus, error.message || "해시 계산에 실패했습니다.", "error");
       }
@@ -7016,6 +7103,7 @@
 
       const runId = app.hashRunId + 1;
       app.hashRunId = runId;
+      adoptExpectedHashAlgorithm();
       const algorithm = getHashAlgorithm();
       let completed = 0;
       let failed = 0;
@@ -7028,6 +7116,7 @@
         item.status = "busy";
         item.hash = "";
         item.algorithm = algorithm;
+        item.match = "";
         item.error = "";
         renderHashList();
         setStatus(els.hashStatus, `${completed + 1}/${app.hashItems.length} 해시 계산 중`, "warn");
@@ -7035,6 +7124,8 @@
         try {
           const buffer = await item.file.arrayBuffer();
           item.hash = await digestHexFromBuffer(buffer, algorithm);
+          const verification = compareExpectedHash(item.hash);
+          item.match = verification.active ? verification.label : "";
           item.status = "done";
           completed += 1;
         } catch (error) {
@@ -7048,10 +7139,20 @@
       const lines = [`# ${algorithm} checksums`];
       app.hashItems
         .filter((item) => item.status === "done" && item.hash)
-        .forEach((item) => lines.push(`${item.hash}  ${item.file.name}`));
+        .forEach((item) => {
+          const verification = item.match ? `  # ${item.match}` : "";
+          lines.push(`${item.hash}  ${item.file.name}${verification}`);
+        });
       setHashOutput(lines);
+      const verified = app.hashItems.filter((item) => item.match === "일치").length;
+      const mismatched = app.hashItems.filter((item) => item.match === "불일치").length;
+      const invalidVerification = app.hashItems.some((item) => item.match === "형식 오류");
       if (failed) {
         setStatus(els.hashStatus, `${completed}개 계산, ${failed}개 실패`, "warn");
+      } else if (invalidVerification) {
+        setStatus(els.hashStatus, "검증할 해시값 형식을 다시 확인하세요.", "warn");
+      } else if (verified || mismatched) {
+        setStatus(els.hashStatus, `${completed}개 계산 · ${verified}개 일치 · ${mismatched}개 불일치`, mismatched ? "warn" : "ok");
       } else {
         setStatus(els.hashStatus, `${completed}개 파일 해시를 계산했습니다.`, "ok");
       }
@@ -7089,6 +7190,25 @@
       }
       const padding = (4 - (compact.length % 4)) % 4;
       return `${compact}${"=".repeat(padding)}`;
+    }
+
+    function looksLikeBase64Input(value) {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return false;
+      }
+      try {
+        const payload = /^data:[^,]*,/i.test(trimmed) ? trimmed.slice(trimmed.indexOf(",") + 1) : trimmed;
+        const compact = payload.replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
+        const hasBase64Signal = /^data:[^,]*,/i.test(trimmed) || /[+/=]/.test(compact) || compact.length >= 24;
+        if (!hasBase64Signal || !/^[a-z0-9+/]*={0,2}$/i.test(compact)) {
+          return false;
+        }
+        base64ToBytes(normalizeBase64Input(trimmed));
+        return true;
+      } catch (error) {
+        return false;
+      }
     }
 
     function safeBase64Filename(name) {
@@ -7145,18 +7265,22 @@
     }
 
     function setBase64Mode(mode, keepOutput = false) {
-      app.base64Mode = mode === "decode" ? "decode" : "encode";
+      app.base64Mode = ["auto", "decode"].includes(mode) ? mode : "encode";
       document.querySelectorAll('[data-segment-group="base64Mode"] .segment').forEach((segment) => {
         segment.classList.toggle("active", segment.dataset.value === app.base64Mode);
       });
 
       const isDecode = app.base64Mode === "decode";
-      els.base64Input.placeholder = isDecode
+      const isAuto = app.base64Mode === "auto";
+      els.base64Input.placeholder = isAuto
+        ? "텍스트나 Base64를 붙여넣으면 자동으로 인코딩/디코딩합니다."
+        : isDecode
         ? "Base64 또는 data URL을 붙여넣으면 디코딩합니다."
         : "텍스트를 입력하면 Base64로 인코딩합니다. 파일 선택도 가능합니다.";
-      els.base64Output.placeholder = isDecode ? "디코딩된 텍스트 미리보기" : "Base64 결과";
-      els.base64Filename.disabled = !isDecode;
+      els.base64Output.placeholder = isDecode || isAuto ? "변환 결과" : "Base64 결과";
+      els.base64Filename.disabled = app.base64Mode === "encode";
       if (!keepOutput) {
+        app.base64ResolvedMode = app.base64Mode === "decode" ? "decode" : "encode";
         app.base64Bytes = null;
         setBase64Output("");
       }
@@ -7174,58 +7298,73 @@
       app.base64RunId = runId;
       app.base64Bytes = null;
 
-      if (app.base64Mode === "encode") {
-        if (app.base64File) {
-          setStatus(els.base64Status, `${app.base64File.name} Base64 인코딩 중`, "warn");
-          try {
-            const buffer = await app.base64File.arrayBuffer();
-            if (runId !== app.base64RunId) {
-              return;
-            }
-            const encoded = bytesToBase64(new Uint8Array(buffer));
-            setBase64Output(encoded);
-            setStatus(els.base64Status, `파일을 Base64로 인코딩했습니다. (${formatBytes(buffer.byteLength)})`, "ok");
-            await autoSaveEntries(
-              [{ name: `${sanitizeFilename(app.base64File.name) || "base64-file"}.b64.txt`, blob: new Blob([encoded], { type: "text/plain;charset=utf-8" }) }],
-              `base64-results-${Date.now()}.zip`,
-              els.base64Status,
-              "Base64"
-            );
-          } catch (error) {
-            if (runId === app.base64RunId) {
-              setBase64Output("");
-              setStatus(els.base64Status, error.message || "파일 인코딩에 실패했습니다.", "error");
-            }
+      if (app.base64File) {
+        app.base64ResolvedMode = "encode";
+        setStatus(els.base64Status, `${app.base64File.name} Base64 인코딩 중`, "warn");
+        try {
+          const buffer = await app.base64File.arrayBuffer();
+          if (runId !== app.base64RunId) {
+            return;
           }
-          return;
+          const encoded = bytesToBase64(new Uint8Array(buffer));
+          setBase64Output(encoded);
+          setStatus(els.base64Status, `파일을 Base64로 인코딩했습니다. (${formatBytes(buffer.byteLength)})`, "ok");
+          await autoSaveEntries(
+            [{ name: `${sanitizeFilename(app.base64File.name) || "base64-file"}.b64.txt`, blob: new Blob([encoded], { type: "text/plain;charset=utf-8" }) }],
+            `base64-results-${Date.now()}.zip`,
+            els.base64Status,
+            "Base64"
+          );
+        } catch (error) {
+          if (runId === app.base64RunId) {
+            setBase64Output("");
+            setStatus(els.base64Status, error.message || "파일 인코딩에 실패했습니다.", "error");
+          }
         }
-
-        const value = els.base64Input.value;
-        if (!value) {
-          setBase64Output("");
-          setStatus(els.base64Status, "텍스트를 입력하거나 파일을 선택하세요.");
-          return;
-        }
-        const encoded = bytesToBase64(new TextEncoder().encode(value));
-        setBase64Output(encoded);
-        setStatus(els.base64Status, "텍스트를 Base64로 인코딩했습니다.", "ok");
         return;
       }
 
       const raw = els.base64Input.value;
+      const shouldDecode = app.base64Mode === "decode" || (app.base64Mode === "auto" && looksLikeBase64Input(raw));
+      const shouldEncode = app.base64Mode === "encode" || (app.base64Mode === "auto" && !shouldDecode);
+
       if (!raw.trim()) {
         setBase64Output("");
-        setStatus(els.base64Status, "Base64 텍스트를 입력하세요.");
+        app.base64ResolvedMode = shouldDecode ? "decode" : "encode";
+        setStatus(
+          els.base64Status,
+          app.base64Mode === "decode" ? "Base64 텍스트를 입력하세요." : "텍스트를 입력하거나 파일을 선택하세요."
+        );
+        return;
+      }
+
+      if (shouldEncode) {
+        app.base64ResolvedMode = "encode";
+        const encoded = bytesToBase64(new TextEncoder().encode(raw));
+        setBase64Output(encoded);
+        setStatus(
+          els.base64Status,
+          app.base64Mode === "auto" ? "일반 텍스트로 보고 Base64로 인코딩했습니다." : "텍스트를 Base64로 인코딩했습니다.",
+          "ok"
+        );
         return;
       }
 
       try {
         const bytes = base64ToBytes(normalizeBase64Input(raw));
         app.base64Bytes = bytes;
+        app.base64ResolvedMode = "decode";
         setBase64Output(tryDecodeUtf8(bytes));
-        setStatus(els.base64Status, `Base64를 디코딩했습니다. (${formatBytes(bytes.byteLength)})`, "ok");
+        setStatus(
+          els.base64Status,
+          app.base64Mode === "auto"
+            ? `Base64로 보고 디코딩했습니다. (${formatBytes(bytes.byteLength)})`
+            : `Base64를 디코딩했습니다. (${formatBytes(bytes.byteLength)})`,
+          "ok"
+        );
       } catch (error) {
         app.base64Bytes = null;
+        app.base64ResolvedMode = "decode";
         setBase64Output("");
         setStatus(els.base64Status, error.message || "Base64 디코딩에 실패했습니다.", "error");
       }
@@ -7239,6 +7378,7 @@
 
       app.base64File = file;
       app.base64Bytes = null;
+      app.base64ResolvedMode = "encode";
       els.base64Input.value = "";
       setBase64Mode("encode", true);
       renderBase64FileList();
@@ -7255,7 +7395,7 @@
     }
 
     async function saveBase64Output() {
-      if (app.base64Mode === "decode" && app.base64Bytes) {
+      if ((app.base64Mode === "decode" || app.base64ResolvedMode === "decode") && app.base64Bytes) {
         const blob = new Blob([app.base64Bytes], { type: "application/octet-stream" });
         try {
           const saved = await downloadEntries([{ name: safeBase64Filename(els.base64Filename.value), blob }], `base64-decoded-${Date.now()}.zip`);
@@ -7284,6 +7424,7 @@
     function resetBase64State() {
       window.clearTimeout(app.base64Debounce);
       app.base64Mode = "encode";
+      app.base64ResolvedMode = "encode";
       app.base64Bytes = null;
       resetBase64File();
       els.base64Input.value = "";
@@ -7343,6 +7484,7 @@
       resetHashFiles();
       els.hashText.value = "";
       els.hashAlgorithm.value = "SHA-256";
+      els.hashExpected.value = "";
       setHashOutput("");
       setStatus(els.hashStatus, "텍스트를 입력하거나 파일을 선택하세요.");
       resetBase64State();
@@ -7675,6 +7817,7 @@
       });
 
       els.hashText.addEventListener("input", queueTextHash);
+      els.hashExpected.addEventListener("input", queueHashVerification);
       els.hashAlgorithm.addEventListener("change", () => {
         if (app.hashItems.length) {
           computeFileHashes();
