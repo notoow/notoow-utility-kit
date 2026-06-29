@@ -657,6 +657,35 @@
         0 0 0 4px rgba(246, 217, 233, 0.18);
     }
 
+    .trim-controls {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.035)),
+        rgba(255, 255, 255, 0.055);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        0 12px 24px rgba(0, 0, 0, 0.16);
+    }
+
+    .trim-controls.is-disabled {
+      opacity: 0.54;
+      pointer-events: none;
+    }
+
+    .trim-range-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .trim-controls .resize-field {
+      font-size: 11px;
+    }
+
     .settings-widget .input-stack {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1724,6 +1753,10 @@
         grid-template-columns: 1fr;
       }
 
+      .trim-range-grid {
+        grid-template-columns: 1fr;
+      }
+
       .resize-field.quality {
         grid-column: span 1;
       }
@@ -1945,6 +1978,22 @@
             <span class="preview-empty">미리보기 없음</span>
             <video id="mp3VideoPreview" controls playsinline preload="metadata"></video>
             <audio id="mp3AudioPreview" controls preload="metadata"></audio>
+          </div>
+          <div class="trim-controls is-disabled" id="mp3TrimControls" aria-live="polite">
+            <div class="quality-head">
+              <span>트림 구간</span>
+              <span id="mp3TrimRangeLabel">파일을 선택하세요</span>
+            </div>
+            <div class="trim-range-grid">
+              <label class="resize-field" for="mp3TrimStart">
+                시작
+                <input class="ios-range" id="mp3TrimStart" type="range" min="0" max="0" step="0.1" value="0" disabled>
+              </label>
+              <label class="resize-field" for="mp3TrimEnd">
+                끝
+                <input class="ios-range" id="mp3TrimEnd" type="range" min="0" max="0" step="0.1" value="0" disabled>
+              </label>
+            </div>
           </div>
 
           <p class="status" id="mp3Status" aria-live="polite">오디오나 동영상 파일을 선택하세요. 여러 파일을 한 번에 처리할 수 있습니다.</p>
@@ -2653,7 +2702,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.47"
+      version: "0.48"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2765,6 +2814,10 @@
       mp3PreviewBox: $("#mp3PreviewBox"),
       mp3VideoPreview: $("#mp3VideoPreview"),
       mp3AudioPreview: $("#mp3AudioPreview"),
+      mp3TrimControls: $("#mp3TrimControls"),
+      mp3TrimStart: $("#mp3TrimStart"),
+      mp3TrimEnd: $("#mp3TrimEnd"),
+      mp3TrimRangeLabel: $("#mp3TrimRangeLabel"),
       mp3Status: $("#mp3Status"),
       chooseMp3FileBtn: $("#chooseMp3FileBtn"),
       convertMp3Btn: $("#convertMp3Btn"),
@@ -6328,6 +6381,7 @@
     }
 
     const LAMEJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js";
+    const MP3_TRIM_MIN_SECONDS = 0.1;
 
     function setMp3Details(title, lines) {
       els.mp3Details.replaceChildren();
@@ -6406,7 +6460,8 @@
       if (item.blob) {
         return `${item.outputName} · ${formatBytes(item.blob.size)}${item.detail ? ` · ${item.detail}` : ""}`;
       }
-      return `${item.kind === "audio" ? "오디오" : "동영상"} · ${formatBytes(item.file.size)}`;
+      const trimLabel = item.duration ? ` · ${describeMp3Trim(item)}` : "";
+      return `${item.kind === "audio" ? "오디오" : "동영상"} · ${formatBytes(item.file.size)}${trimLabel}`;
     }
 
     function renderMp3List() {
@@ -6441,10 +6496,27 @@
       });
     }
 
+    function updateMp3PreviewDetails(item) {
+      if (!item) {
+        setMp3Details("변환 대기", ["브라우저에서 재생 가능한 오디오나 영상의 소리를 MP3로 일괄 저장합니다."]);
+        return;
+      }
+
+      const title = item.status === "done" ? "MP3 변환 완료" : item.kind === "audio" ? "선택한 오디오" : "선택한 동영상";
+      const sourceLabel = item.file.type || converterExtension(item.file).toUpperCase();
+      const trimLabel = item.duration ? describeMp3Trim(item) : "길이 확인 중";
+      const lines = item.status === "done"
+        ? [`${item.outputName} (${formatBytes(item.blob.size)})`, item.detail || "192 kbps", `구간 ${trimLabel}`]
+        : [`${item.file.name} (${formatBytes(item.file.size)})`, `${sourceLabel} · ${trimLabel}`];
+      setMp3Details(title, lines);
+    }
+
     function updateMp3Preview() {
       const item = getActiveMp3Item() || app.mp3Items[0] || null;
       clearMp3Preview();
       if (!item?.previewUrl) {
+        syncMp3TrimControls(null);
+        updateMp3PreviewDetails(null);
         return;
       }
 
@@ -6460,11 +6532,8 @@
         els.mp3PreviewBox.classList.add("has-video");
       }
 
-      const title = item.status === "done" ? "MP3 변환 완료" : item.kind === "audio" ? "선택한 오디오" : "선택한 동영상";
-      const lines = item.status === "done"
-        ? [`${item.outputName} (${formatBytes(item.blob.size)})`, item.detail || "192 kbps"]
-        : [`${item.file.name} (${formatBytes(item.file.size)})`, item.file.type || converterExtension(item.file).toUpperCase()];
-      setMp3Details(title, lines);
+      syncMp3TrimControls(item);
+      updateMp3PreviewDetails(item);
     }
 
     function resetMp3State() {
@@ -6484,6 +6553,7 @@
       clearMp3Preview();
       setMp3Details("변환 대기", ["브라우저에서 재생 가능한 오디오나 영상의 소리를 MP3로 일괄 저장합니다."]);
       setMp3Activity("", "대기 중");
+      syncMp3TrimControls(null);
       setStatus(els.mp3Status, "오디오나 동영상 파일을 선택하세요. 여러 파일을 한 번에 처리할 수 있습니다.");
     }
 
@@ -6509,6 +6579,220 @@
       const minutes = Math.floor(totalSeconds / 60);
       const remainder = totalSeconds % 60;
       return `${minutes}:${String(remainder).padStart(2, "0")}`;
+    }
+
+    function clampNumber(value, min, max) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        return min;
+      }
+      return Math.min(max, Math.max(min, numeric));
+    }
+
+    function getMp3TrimBounds(item, fallbackDuration = item?.duration) {
+      const duration = Number.isFinite(fallbackDuration) && fallbackDuration > 0 ? fallbackDuration : 0;
+      if (!duration) {
+        return { start: 0, end: 0, length: 0, duration: 0, trimmed: false };
+      }
+
+      const minEnd = Math.min(duration, MP3_TRIM_MIN_SECONDS);
+      let start = clampNumber(item?.trimStart, 0, Math.max(0, duration - MP3_TRIM_MIN_SECONDS));
+      let end = Number.isFinite(item?.trimEnd) && item.trimEnd > 0 ? item.trimEnd : duration;
+      end = clampNumber(end, minEnd, duration);
+      if (end - start < MP3_TRIM_MIN_SECONDS) {
+        if (start + MP3_TRIM_MIN_SECONDS <= duration) {
+          end = start + MP3_TRIM_MIN_SECONDS;
+        } else {
+          start = Math.max(0, duration - MP3_TRIM_MIN_SECONDS);
+          end = duration;
+        }
+      }
+
+      return {
+        start,
+        end,
+        length: Math.max(0, end - start),
+        duration,
+        trimmed: start > 0.05 || end < duration - 0.05
+      };
+    }
+
+    function describeMp3Trim(item) {
+      const bounds = getMp3TrimBounds(item);
+      if (!bounds.duration) {
+        return "길이 확인 중";
+      }
+      return bounds.trimmed
+        ? `${formatDuration(bounds.start)} - ${formatDuration(bounds.end)} (${formatDuration(bounds.length)})`
+        : `전체 ${formatDuration(bounds.duration)}`;
+    }
+
+    function getMp3PreviewElement(item = getActiveMp3Item()) {
+      if (!item) {
+        return null;
+      }
+      return item.kind === "audio" ? els.mp3AudioPreview : els.mp3VideoPreview;
+    }
+
+    function syncMp3TrimControls(item = getActiveMp3Item()) {
+      const bounds = getMp3TrimBounds(item);
+      const enabled = Boolean(item && bounds.duration && !app.mp3Processing);
+      els.mp3TrimControls.classList.toggle("is-disabled", !enabled);
+      [els.mp3TrimStart, els.mp3TrimEnd].forEach((control) => {
+        control.disabled = !enabled;
+        control.max = String(bounds.duration || 0);
+        control.step = "0.1";
+      });
+
+      els.mp3TrimStart.value = String(bounds.start || 0);
+      els.mp3TrimEnd.value = String(bounds.end || 0);
+      els.mp3TrimRangeLabel.textContent = item ? describeMp3Trim(item) : "파일을 선택하세요";
+    }
+
+    function invalidateMp3OutputsAfterTrim() {
+      if (!app.mp3Items.some((item) => item.blob || item.url)) {
+        return;
+      }
+      clearMp3Output();
+      renderMp3List();
+      updateMp3Preview();
+    }
+
+    function updateMp3ItemTrimFromControls(changedEdge) {
+      const item = getActiveMp3Item();
+      if (!item || app.mp3Processing) {
+        syncMp3TrimControls(item);
+        return;
+      }
+
+      const duration = Number.isFinite(item.duration) && item.duration > 0 ? item.duration : 0;
+      if (!duration) {
+        syncMp3TrimControls(item);
+        return;
+      }
+
+      let start = clampNumber(els.mp3TrimStart.value, 0, Math.max(0, duration - MP3_TRIM_MIN_SECONDS));
+      let end = clampNumber(els.mp3TrimEnd.value, MP3_TRIM_MIN_SECONDS, duration);
+      if (end - start < MP3_TRIM_MIN_SECONDS) {
+        if (changedEdge === "start") {
+          start = Math.max(0, end - MP3_TRIM_MIN_SECONDS);
+        } else {
+          end = Math.min(duration, start + MP3_TRIM_MIN_SECONDS);
+        }
+      }
+
+      item.trimStart = start;
+      item.trimEnd = end;
+      syncMp3TrimControls(item);
+
+      const media = getMp3PreviewElement(item);
+      if (media && Number.isFinite(media.duration)) {
+        media.currentTime = changedEdge === "end" ? end : start;
+      }
+      invalidateMp3OutputsAfterTrim();
+      setStatus(els.mp3Status, `트림 구간: ${describeMp3Trim(item)}. 미리보기에서 확인할 수 있습니다.`, "ok");
+    }
+
+    function applyMp3PreviewTrim(event) {
+      const item = getActiveMp3Item();
+      const media = event.currentTarget;
+      if (!item || media !== getMp3PreviewElement(item)) {
+        return;
+      }
+
+      const bounds = getMp3TrimBounds(item, media.duration);
+      if (!bounds.duration || !bounds.trimmed) {
+        return;
+      }
+
+      if (event.type === "play" && (media.currentTime < bounds.start || media.currentTime >= bounds.end - 0.04)) {
+        media.currentTime = bounds.start;
+        return;
+      }
+
+      if (event.type === "timeupdate" && media.currentTime >= bounds.end) {
+        media.pause();
+        media.currentTime = bounds.start;
+      }
+    }
+
+    function registerMp3PreviewMetadata(event) {
+      const item = getActiveMp3Item();
+      const media = event.currentTarget;
+      if (!item || media !== getMp3PreviewElement(item)) {
+        return;
+      }
+
+      if (Number.isFinite(media.duration) && media.duration > 0) {
+        item.duration = media.duration;
+        if (!Number.isFinite(item.trimEnd) || item.trimEnd <= 0) {
+          item.trimEnd = item.duration;
+        }
+        syncMp3TrimControls(item);
+        renderMp3List();
+        updateMp3PreviewDetails(item);
+      }
+    }
+
+    function probeMediaDuration(item) {
+      return new Promise((resolve, reject) => {
+        const media = document.createElement(item.kind === "audio" ? "audio" : "video");
+        let settled = false;
+        const cleanup = () => {
+          media.removeEventListener("loadedmetadata", onLoaded);
+          media.removeEventListener("error", onError);
+          media.removeAttribute("src");
+          media.load();
+        };
+        const finish = (duration) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve(duration);
+        };
+        const onLoaded = () => finish(Number.isFinite(media.duration) ? media.duration : 0);
+        const onError = () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          reject(new Error("길이를 읽지 못했습니다."));
+        };
+        media.preload = "metadata";
+        media.src = item.previewUrl;
+        media.addEventListener("loadedmetadata", onLoaded, { once: true });
+        media.addEventListener("error", onError, { once: true });
+      });
+    }
+
+    async function hydrateMp3Durations(runId) {
+      for (const item of app.mp3Items) {
+        if (runId !== app.mp3RunId) {
+          return;
+        }
+        try {
+          const duration = await probeMediaDuration(item);
+          if (runId !== app.mp3RunId) {
+            return;
+          }
+          if (Number.isFinite(duration) && duration > 0) {
+            item.duration = duration;
+            item.trimEnd = Number.isFinite(item.trimEnd) && item.trimEnd > 0 ? Math.min(item.trimEnd, duration) : duration;
+            item.trimStart = Math.min(item.trimStart || 0, Math.max(0, duration - MP3_TRIM_MIN_SECONDS));
+          }
+        } catch (error) {
+          item.duration = 0;
+        }
+
+        if (item.id === app.activeMp3Id) {
+          updateMp3Preview();
+        } else {
+          renderMp3List();
+        }
+      }
     }
 
     async function handleMp3Paste(event) {
@@ -6611,6 +6895,9 @@
         kind: isSupportedAudioFile(file) ? "audio" : "video",
         status: "queued",
         previewUrl: URL.createObjectURL(file),
+        duration: 0,
+        trimStart: 0,
+        trimEnd: 0,
         blob: null,
         url: "",
         outputName: "",
@@ -6620,13 +6907,14 @@
       app.activeMp3Id = app.mp3Items[0]?.id || null;
       renderMp3List();
       updateMp3Preview();
+      hydrateMp3Durations(app.mp3RunId);
 
       const skipped = rejectedCount ? ` · ${rejectedCount}개 제외` : "";
       setMp3Activity("", "준비 완료");
       setStatus(els.mp3Status, `${app.mp3Items.length}개 파일 준비 완료. MP3 변환을 실행하세요.${skipped}`, "ok");
     }
 
-    async function encodeAudioFileToMp3(file, onProgress) {
+    async function encodeAudioFileToMp3(file, trimBounds, onProgress) {
       let audioContext = null;
 
       try {
@@ -6635,9 +6923,13 @@
         const arrayBuffer = await file.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
         const sampleRate = audioBuffer.sampleRate;
+        const bounds = getMp3TrimBounds(trimBounds, audioBuffer.duration);
         const encoder = new lame.Mp3Encoder(2, sampleRate, 192);
-        const leftData = audioBuffer.getChannelData(0);
-        const rightData = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : leftData;
+        const startSample = Math.floor(bounds.start * sampleRate);
+        const endSample = Math.min(audioBuffer.length, Math.max(startSample + 1, Math.ceil(bounds.end * sampleRate)));
+        const leftData = audioBuffer.getChannelData(0).subarray(startSample, endSample);
+        const rightSource = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : audioBuffer.getChannelData(0);
+        const rightData = rightSource.subarray(startSample, endSample);
         const chunks = [];
         const frameSize = 1152;
 
@@ -6671,14 +6963,37 @@
 
         return {
           blob: new Blob(chunks, { type: "audio/mpeg" }),
-          detail: `${formatDuration(audioBuffer.duration)} · 192 kbps`
+          detail: `${formatDuration(bounds.length || audioBuffer.duration)}${bounds.trimmed ? ` / 원본 ${formatDuration(audioBuffer.duration)}` : ""} · 192 kbps`
         };
       } finally {
         await audioContext?.close();
       }
     }
 
-    async function encodeVideoFileToMp3(file, sourceUrl, onProgress) {
+    function waitForMediaSeek(media, targetTime) {
+      if (!Number.isFinite(targetTime) || Math.abs(media.currentTime - targetTime) < 0.08) {
+        return Promise.resolve();
+      }
+      return new Promise((resolve, reject) => {
+        const cleanup = () => {
+          media.removeEventListener("seeked", onSeeked);
+          media.removeEventListener("error", onError);
+        };
+        const onSeeked = () => {
+          cleanup();
+          resolve();
+        };
+        const onError = () => {
+          cleanup();
+          reject(new Error("미리보기 위치를 이동하지 못했습니다."));
+        };
+        media.addEventListener("seeked", onSeeked, { once: true });
+        media.addEventListener("error", onError, { once: true });
+        media.currentTime = targetTime;
+      });
+    }
+
+    async function encodeVideoFileToMp3(file, sourceUrl, trimBounds, onProgress) {
       let audioContext = null;
       let source = null;
       let processor = null;
@@ -6700,7 +7015,8 @@
         const lame = await loadLameJs();
         await waitForVideoMetadata(video);
         video.pause();
-        video.currentTime = 0;
+        const bounds = getMp3TrimBounds(trimBounds, video.duration);
+        await waitForMediaSeek(video, bounds.start);
 
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         await audioContext.resume();
@@ -6732,7 +7048,7 @@
             onProgress?.("변환 중");
             return;
           }
-          const progress = Math.min(99, Math.round((video.currentTime / video.duration) * 100));
+          const progress = Math.min(99, Math.round(((video.currentTime - bounds.start) / Math.max(bounds.length, 0.1)) * 100));
           onProgress?.(`${progress}% 변환 중`);
         }, 300);
 
@@ -6741,6 +7057,7 @@
             window.clearInterval(progressTimer);
             video.removeEventListener("ended", onEnded);
             video.removeEventListener("error", onError);
+            video.removeEventListener("timeupdate", onTimeUpdate);
           };
           const onEnded = () => {
             cleanup();
@@ -6750,8 +7067,16 @@
             cleanup();
             reject(new Error("동영상 재생 중 오류가 발생했습니다."));
           };
+          const onTimeUpdate = () => {
+            if (video.currentTime >= bounds.end) {
+              video.pause();
+              cleanup();
+              resolve();
+            }
+          };
           video.addEventListener("ended", onEnded, { once: true });
           video.addEventListener("error", onError, { once: true });
+          video.addEventListener("timeupdate", onTimeUpdate);
           video.play().catch((error) => {
             cleanup();
             reject(error);
@@ -6768,7 +7093,7 @@
 
         return {
           blob: new Blob(chunks, { type: "audio/mpeg" }),
-          detail: `${formatDuration(video.duration)} · 192 kbps`
+          detail: `${formatDuration(bounds.length || video.duration)}${bounds.trimmed ? ` / 원본 ${formatDuration(video.duration)}` : ""} · 192 kbps`
         };
       } finally {
         video.pause();
@@ -6800,6 +7125,7 @@
       clearMp3Output();
       renderMp3List();
       setBusy(els.convertMp3Btn, true, "변환 중");
+      syncMp3TrimControls(getActiveMp3Item());
       setMp3Activity("busy", "인코더 로드 중");
       setStatus(els.mp3Status, "MP3 인코더를 준비하고 있습니다.", "warn");
 
@@ -6823,12 +7149,12 @@
 
           try {
             const result = item.kind === "audio"
-              ? await encodeAudioFileToMp3(item.file, (text) => {
+              ? await encodeAudioFileToMp3(item.file, item, (text) => {
                   if (runId === app.mp3RunId) {
                     setMp3Activity("busy", `${completed + 1}/${total} · ${text}`);
                   }
                 })
-              : await encodeVideoFileToMp3(item.file, item.previewUrl, (text) => {
+              : await encodeVideoFileToMp3(item.file, item.previewUrl, item, (text) => {
                   if (runId === app.mp3RunId) {
                     setMp3Activity("busy", `${completed + 1}/${total} · ${text}`);
                   }
@@ -6878,6 +7204,7 @@
       } finally {
         app.mp3Processing = false;
         setBusy(els.convertMp3Btn, false);
+        syncMp3TrimControls(getActiveMp3Item());
       }
     }
 
@@ -7795,6 +8122,13 @@
       });
       els.convertMp3Btn.addEventListener("click", convertMp3Files);
       els.saveMp3Btn.addEventListener("click", saveMp3);
+      els.mp3TrimStart.addEventListener("input", () => updateMp3ItemTrimFromControls("start"));
+      els.mp3TrimEnd.addEventListener("input", () => updateMp3ItemTrimFromControls("end"));
+      [els.mp3VideoPreview, els.mp3AudioPreview].forEach((media) => {
+        media.addEventListener("loadedmetadata", registerMp3PreviewMetadata);
+        media.addEventListener("play", applyMp3PreviewTrim);
+        media.addEventListener("timeupdate", applyMp3PreviewTrim);
+      });
       ["dragenter", "dragover"].forEach((eventName) => {
         els.mp3Zone.addEventListener(eventName, (event) => {
           event.preventDefault();
