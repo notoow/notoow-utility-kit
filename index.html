@@ -676,14 +676,106 @@
       pointer-events: none;
     }
 
-    .trim-range-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    .trim-time-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 10px;
+      color: rgba(247, 248, 251, 0.68);
+      font-family: "Geist Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 11px;
+      font-weight: 760;
+      line-height: 1;
     }
 
-    .trim-controls .resize-field {
-      font-size: 11px;
+    .trim-time-row.selection {
+      color: rgba(247, 248, 251, 0.9);
+    }
+
+    .trim-slider {
+      --trim-start: 0%;
+      --trim-end-offset: 0%;
+      position: relative;
+      height: 36px;
+      border-radius: 999px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05)),
+        rgba(255, 255, 255, 0.055);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.16);
+    }
+
+    .trim-track,
+    .trim-selected {
+      position: absolute;
+      left: 13px;
+      right: 13px;
+      top: 50%;
+      height: 7px;
+      transform: translateY(-50%);
+      border-radius: 999px;
+      pointer-events: none;
+    }
+
+    .trim-track {
+      background: rgba(14, 18, 24, 0.44);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+    }
+
+    .trim-selected {
+      left: var(--trim-start, 0%);
+      right: var(--trim-end-offset, 0%);
+      margin-left: 13px;
+      margin-right: 13px;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.86), rgba(246, 217, 233, 0.78)),
+        rgba(255, 255, 255, 0.42);
+      box-shadow:
+        0 0 18px rgba(246, 217, 233, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.48);
+    }
+
+    .trim-slider .ios-range {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 36px;
+      margin: 0;
+      border: 0;
+      box-shadow: none;
+      background: transparent;
+      pointer-events: none;
+    }
+
+    .trim-slider .ios-range::-webkit-slider-runnable-track {
+      height: 36px;
+      background: transparent;
+    }
+
+    .trim-slider .ios-range::-webkit-slider-thumb {
+      pointer-events: auto;
+      margin-top: 6px;
+      cursor: ew-resize;
+    }
+
+    .trim-slider .ios-range::-moz-range-track {
+      height: 36px;
+      background: transparent;
+    }
+
+    .trim-slider .ios-range::-moz-range-thumb {
+      pointer-events: auto;
+      cursor: ew-resize;
+    }
+
+    #mp3TrimStart {
+      z-index: 3;
+    }
+
+    #mp3TrimEnd {
+      z-index: 4;
     }
 
     .settings-widget .input-stack {
@@ -1753,10 +1845,6 @@
         grid-template-columns: 1fr;
       }
 
-      .trim-range-grid {
-        grid-template-columns: 1fr;
-      }
-
       .resize-field.quality {
         grid-column: span 1;
       }
@@ -1984,15 +2072,19 @@
               <span>트림 구간</span>
               <span id="mp3TrimRangeLabel">파일을 선택하세요</span>
             </div>
-            <div class="trim-range-grid">
-              <label class="resize-field" for="mp3TrimStart">
-                시작
-                <input class="ios-range" id="mp3TrimStart" type="range" min="0" max="0" step="0.1" value="0" disabled>
-              </label>
-              <label class="resize-field" for="mp3TrimEnd">
-                끝
-                <input class="ios-range" id="mp3TrimEnd" type="range" min="0" max="0" step="0.1" value="0" disabled>
-              </label>
+            <div class="trim-time-row">
+              <span>00:00</span>
+              <span id="mp3TrimDurationLabel">--:--</span>
+            </div>
+            <div class="trim-slider" id="mp3TrimSlider">
+              <span class="trim-track" aria-hidden="true"></span>
+              <span class="trim-selected" aria-hidden="true"></span>
+              <input class="ios-range" id="mp3TrimStart" type="range" min="0" max="0" step="1" value="0" aria-label="트림 시작" disabled>
+              <input class="ios-range" id="mp3TrimEnd" type="range" min="0" max="0" step="1" value="0" aria-label="트림 끝" disabled>
+            </div>
+            <div class="trim-time-row selection">
+              <span id="mp3TrimStartText">00:00</span>
+              <span id="mp3TrimEndText">--:--</span>
             </div>
           </div>
 
@@ -2702,7 +2794,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.48"
+      version: "0.49"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2815,9 +2907,13 @@
       mp3VideoPreview: $("#mp3VideoPreview"),
       mp3AudioPreview: $("#mp3AudioPreview"),
       mp3TrimControls: $("#mp3TrimControls"),
+      mp3TrimSlider: $("#mp3TrimSlider"),
       mp3TrimStart: $("#mp3TrimStart"),
       mp3TrimEnd: $("#mp3TrimEnd"),
       mp3TrimRangeLabel: $("#mp3TrimRangeLabel"),
+      mp3TrimDurationLabel: $("#mp3TrimDurationLabel"),
+      mp3TrimStartText: $("#mp3TrimStartText"),
+      mp3TrimEndText: $("#mp3TrimEndText"),
       mp3Status: $("#mp3Status"),
       chooseMp3FileBtn: $("#chooseMp3FileBtn"),
       convertMp3Btn: $("#convertMp3Btn"),
@@ -6381,7 +6477,7 @@
     }
 
     const LAMEJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js";
-    const MP3_TRIM_MIN_SECONDS = 0.1;
+    const MP3_TRIM_MIN_SECONDS = 1;
 
     function setMp3Details(title, lines) {
       els.mp3Details.replaceChildren();
@@ -6581,6 +6677,17 @@
       return `${minutes}:${String(remainder).padStart(2, "0")}`;
     }
 
+    function formatTimelineTime(seconds) {
+      const totalSeconds = Math.max(0, Math.round(Number.isFinite(seconds) ? seconds : 0));
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const remainder = totalSeconds % 60;
+      if (hours) {
+        return `${hours}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+      }
+      return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+    }
+
     function clampNumber(value, min, max) {
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) {
@@ -6623,8 +6730,8 @@
         return "길이 확인 중";
       }
       return bounds.trimmed
-        ? `${formatDuration(bounds.start)} - ${formatDuration(bounds.end)} (${formatDuration(bounds.length)})`
-        : `전체 ${formatDuration(bounds.duration)}`;
+        ? `${formatTimelineTime(bounds.start)} - ${formatTimelineTime(bounds.end)} (${formatTimelineTime(bounds.length)})`
+        : `전체 ${formatTimelineTime(bounds.duration)}`;
     }
 
     function getMp3PreviewElement(item = getActiveMp3Item()) {
@@ -6641,12 +6748,20 @@
       [els.mp3TrimStart, els.mp3TrimEnd].forEach((control) => {
         control.disabled = !enabled;
         control.max = String(bounds.duration || 0);
-        control.step = "0.1";
+        control.step = "1";
       });
 
       els.mp3TrimStart.value = String(bounds.start || 0);
       els.mp3TrimEnd.value = String(bounds.end || 0);
       els.mp3TrimRangeLabel.textContent = item ? describeMp3Trim(item) : "파일을 선택하세요";
+      els.mp3TrimDurationLabel.textContent = bounds.duration ? formatTimelineTime(bounds.duration) : "--:--";
+      els.mp3TrimStartText.textContent = bounds.duration ? formatTimelineTime(bounds.start) : "00:00";
+      els.mp3TrimEndText.textContent = bounds.duration ? formatTimelineTime(bounds.end) : "--:--";
+
+      const startPercent = bounds.duration ? Math.max(0, Math.min(100, (bounds.start / bounds.duration) * 100)) : 0;
+      const endPercent = bounds.duration ? Math.max(0, Math.min(100, (bounds.end / bounds.duration) * 100)) : 100;
+      els.mp3TrimSlider.style.setProperty("--trim-start", `${startPercent}%`);
+      els.mp3TrimSlider.style.setProperty("--trim-end-offset", `${100 - endPercent}%`);
     }
 
     function invalidateMp3OutputsAfterTrim() {
