@@ -2861,7 +2861,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.53"
+      version: "0.54"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -4284,6 +4284,7 @@
       pdf: "application/pdf"
     };
     const CONVERTER_URL_EXTENSIONS = new Set(["png", "pdf", ...NON_PNG_IMAGE_EXTENSIONS]);
+    const GOOGLE_IMAGE_HIGH_RES_SIZES = [800, 400];
 
     function converterExtension(file) {
       return (file.name.split(".").pop() || "").toLowerCase();
@@ -4318,6 +4319,73 @@
       return CONVERTER_URL_MIME_BY_EXTENSION[extension] || (NON_PNG_IMAGE_EXTENSIONS.has(extension) ? `image/${extension}` : "");
     }
 
+    function isGoogleImageHost(url) {
+      return /(^|\.)((ggpht|googleusercontent)\.com)$/i.test(url.hostname);
+    }
+
+    function getGoogleImageSizing(url) {
+      if (!isGoogleImageHost(url)) {
+        return null;
+      }
+      const pathname = url.pathname;
+      const equalIndex = pathname.lastIndexOf("=");
+      if (equalIndex < 1 || equalIndex === pathname.length - 1) {
+        return null;
+      }
+      const suffix = pathname.slice(equalIndex + 1);
+      if (!/(^|-)[swh]\d+(?=$|-)/.test(suffix)) {
+        return null;
+      }
+      return {
+        basePath: pathname.slice(0, equalIndex),
+        suffix
+      };
+    }
+
+    function urlWithPathname(url, pathname) {
+      const nextUrl = new URL(url.href);
+      nextUrl.pathname = pathname;
+      return nextUrl;
+    }
+
+    function upgradeGoogleImageSuffix(suffix, size) {
+      let upgraded = suffix;
+      if (/(^|-)s\d+(?=$|-)/.test(upgraded)) {
+        upgraded = upgraded.replace(/(^|-)s\d+(?=$|-)/g, `$1s${size}`);
+      }
+      if (/(^|-)w\d+(?=$|-)/.test(upgraded)) {
+        upgraded = upgraded.replace(/(^|-)w\d+(?=$|-)/g, `$1w${size}`);
+      }
+      if (/(^|-)h\d+(?=$|-)/.test(upgraded)) {
+        upgraded = upgraded.replace(/(^|-)h\d+(?=$|-)/g, `$1h${size}`);
+      }
+      return upgraded;
+    }
+
+    function buildConverterUrlCandidates(url) {
+      const candidates = [];
+      const addCandidate = (candidate) => {
+        if (!candidates.some((existing) => existing.href === candidate.href)) {
+          candidates.push(candidate);
+        }
+      };
+      const googleSizing = getGoogleImageSizing(url);
+      if (isGoogleImageHost(url)) {
+        if (googleSizing) {
+          GOOGLE_IMAGE_HIGH_RES_SIZES.forEach((size) => {
+            addCandidate(urlWithPathname(url, `${googleSizing.basePath}=${upgradeGoogleImageSuffix(googleSizing.suffix, size)}`));
+          });
+          addCandidate(urlWithPathname(url, googleSizing.basePath));
+        } else if (!extensionFromPathname(url.pathname)) {
+          GOOGLE_IMAGE_HIGH_RES_SIZES.forEach((size) => {
+            addCandidate(urlWithPathname(url, `${url.pathname}=s${size}`));
+          });
+        }
+      }
+      addCandidate(url);
+      return candidates;
+    }
+
     function normalizeConverterUrl(value) {
       const trimmed = value.trim().replace(/^<|>$/g, "");
       if (!trimmed) {
@@ -4345,7 +4413,9 @@
     }
 
     function converterFilenameFromUrl(url, mimeType) {
-      const rawName = url.pathname.split("/").filter(Boolean).pop() || "";
+      const googleSizing = getGoogleImageSizing(url);
+      const pathname = googleSizing?.basePath || url.pathname;
+      const rawName = pathname.split("/").filter(Boolean).pop() || "";
       let decodedName = "";
       try {
         decodedName = decodeURIComponent(rawName);
@@ -4364,26 +4434,39 @@
 
     async function fetchConverterUrlFile(value) {
       const url = normalizeConverterUrl(value);
-      const extension = extensionFromPathname(url.pathname);
-      const response = await fetch(url.href, {
-        cache: "no-store",
-        credentials: "omit",
-        referrerPolicy: "no-referrer"
-      });
-      if (!response.ok) {
-        throw new Error(`이미지 링크를 읽지 못했습니다. (${response.status})`);
+      const candidates = buildConverterUrlCandidates(url);
+      let lastError = null;
+      for (const candidateUrl of candidates) {
+        const extension = extensionFromPathname(candidateUrl.pathname);
+        let response;
+        try {
+          response = await fetch(candidateUrl.href, {
+            cache: "no-store",
+            credentials: "omit",
+            referrerPolicy: "no-referrer"
+          });
+        } catch (error) {
+          lastError = error;
+          continue;
+        }
+        if (!response.ok) {
+          lastError = new Error(`이미지 링크를 읽지 못했습니다. (${response.status})`);
+          continue;
+        }
+        const responseMime = cleanMimeType(response.headers.get("content-type"));
+        const extensionMime = mimeFromConverterExtension(extension);
+        const isSupportedByMime = responseMime.startsWith("image/") || responseMime === "application/pdf";
+        const isSupportedByExtension = CONVERTER_URL_EXTENSIONS.has(extension);
+        if (!isSupportedByMime && !isSupportedByExtension) {
+          lastError = new Error("이미지 또는 PDF 링크만 PNG 변환에 넣을 수 있습니다.");
+          continue;
+        }
+        const mimeType = isSupportedByMime ? responseMime : extensionMime;
+        const blob = await response.blob();
+        const fileName = converterFilenameFromUrl(candidateUrl, mimeType);
+        return new File([blob], fileName, { type: mimeType || blob.type || extensionMime });
       }
-      const responseMime = cleanMimeType(response.headers.get("content-type"));
-      const extensionMime = mimeFromConverterExtension(extension);
-      const isSupportedByMime = responseMime.startsWith("image/") || responseMime === "application/pdf";
-      const isSupportedByExtension = CONVERTER_URL_EXTENSIONS.has(extension);
-      if (!isSupportedByMime && !isSupportedByExtension) {
-        throw new Error("이미지 또는 PDF 링크만 PNG 변환에 넣을 수 있습니다.");
-      }
-      const mimeType = isSupportedByMime ? responseMime : extensionMime;
-      const blob = await response.blob();
-      const fileName = converterFilenameFromUrl(url, mimeType);
-      return new File([blob], fileName, { type: mimeType || blob.type || extensionMime });
+      throw lastError || new Error("이미지 링크를 불러오지 못했습니다.");
     }
 
     function converterUrlErrorMessage(error) {
@@ -5007,7 +5090,7 @@
 
       setBusy(els.addConverterUrlBtn, true, "불러오는 중");
       setConverterActivity("busy", "링크 읽는 중");
-      setStatus(els.converterStatus, "이미지 링크를 확인 중입니다.", "warn");
+      setStatus(els.converterStatus, "이미지 링크를 고화질 후보로 확인 중입니다.", "warn");
       try {
         const file = await fetchConverterUrlFile(link);
         els.converterUrlInput.value = "";
