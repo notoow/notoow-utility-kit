@@ -511,6 +511,10 @@
       align-items: center;
     }
 
+    .converter-url-row {
+      margin-bottom: 10px;
+    }
+
     .ios-input {
       width: 100%;
       height: 46px;
@@ -1968,11 +1972,18 @@
           </div>
 
           <input class="hidden-input" id="converterInput" type="file" multiple accept="image/*,application/pdf,.jpg,.jpeg,.jpe,.jfif,.pjpeg,.pjp,.webp,.gif,.bmp,.dib,.avif,.svg,.svgz,.heic,.heif,.tif,.tiff,.ico,.cur,.apng,.jxl,.jp2,.j2k,.jpf,.jpx,.jpm,.mj2,.dds,.tga,.icns,.qoi,.pnm,.pbm,.pgm,.ppm,.pam,.psd,.psb,.ras,.sgi,.exr,.hdr,.pic,.pcx,.xbm,.xpm,.emf,.wmf,.raw,.arw,.cr2,.cr3,.nef,.nrw,.orf,.rw2,.raf,.dng,.sr2,.srf,.pef,.iiq,.3fr,.kdc,.erf,.mef,.mos,.mrw,.ari,.pdf">
+          <div class="control-row converter-url-row">
+            <input class="ios-input" id="converterUrlInput" type="url" inputmode="url" placeholder="https://example.com/image.svg" autocomplete="off">
+            <button class="ios-btn" id="addConverterUrlBtn" type="button">
+              <i data-lucide="link" stroke-width="2" width="16" height="16"></i>
+              링크 추가
+            </button>
+          </div>
           <div class="paste-zone converter-zone" id="converterZone" tabindex="0">
             <div class="converter-drop-head">
               <div>
                 <strong>이미지를 놓거나 선택</strong>
-                <span>PNG AVIF HEIC WebP JPG SVG TIFF RAW 이미지와 PDF</span>
+                <span>파일 · 이미지 URL · 클립보드 붙여넣기 지원</span>
               </div>
               <i data-lucide="upload-cloud" stroke-width="2" width="20" height="20"></i>
             </div>
@@ -2000,7 +2011,7 @@
             </label>
           </div>
 
-          <p class="status" id="converterStatus" aria-live="polite">이미지 파일을 선택하면 PNG 변환을 시작합니다. PNG도 비율 조절과 다시 저장을 지원합니다. PDF 전체 페이지와 여러 결과는 ZIP으로 저장합니다.</p>
+          <p class="status" id="converterStatus" aria-live="polite">파일, 이미지 링크, 클립보드 이미지를 PNG로 변환합니다. PNG도 비율 조절과 다시 저장을 지원합니다. PDF 전체 페이지와 여러 결과는 ZIP으로 저장합니다.</p>
           <div class="action-row">
             <button class="ios-btn" id="chooseConvertFileBtn" type="button">
               <i data-lucide="upload" stroke-width="2" width="16" height="16"></i>
@@ -2836,7 +2847,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.51"
+      version: "0.52"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2867,6 +2878,8 @@
       downloadQrBtn: $("#downloadQrBtn"),
       qrInvertToggle: $("#qrInvertToggle"),
       converterInput: $("#converterInput"),
+      converterUrlInput: $("#converterUrlInput"),
+      addConverterUrlBtn: $("#addConverterUrlBtn"),
       converterZone: $("#converterZone"),
       converterFileList: $("#converterFileList"),
       converterActivity: $("#converterActivity"),
@@ -4222,6 +4235,27 @@
       "image/webp": { extension: "webp", label: "WebP" },
       "image/png": { extension: "png", label: "PNG" }
     };
+    const CONVERTER_URL_MIME_BY_EXTENSION = {
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      jpe: "image/jpeg",
+      jfif: "image/jpeg",
+      webp: "image/webp",
+      gif: "image/gif",
+      bmp: "image/bmp",
+      dib: "image/bmp",
+      avif: "image/avif",
+      svg: "image/svg+xml",
+      svgz: "image/svg+xml",
+      heic: "image/heic",
+      heif: "image/heif",
+      tif: "image/tiff",
+      tiff: "image/tiff",
+      ico: "image/x-icon",
+      pdf: "application/pdf"
+    };
+    const CONVERTER_URL_EXTENSIONS = new Set(["png", "pdf", ...NON_PNG_IMAGE_EXTENSIONS]);
 
     function converterExtension(file) {
       return (file.name.split(".").pop() || "").toLowerCase();
@@ -4237,6 +4271,98 @@
         return true;
       }
       return (file.type || "").startsWith("image/") || SUPPORTED_CONVERTER_TYPES.has(file.type) || NON_PNG_IMAGE_EXTENSIONS.has(extension);
+    }
+
+    function cleanMimeType(value) {
+      return (value || "").split(";")[0].trim().toLowerCase();
+    }
+
+    function extensionFromPathname(pathname) {
+      const segment = pathname.split("/").pop() || "";
+      const dotIndex = segment.lastIndexOf(".");
+      if (dotIndex <= 0 || dotIndex === segment.length - 1) {
+        return "";
+      }
+      return segment.slice(dotIndex + 1).toLowerCase();
+    }
+
+    function mimeFromConverterExtension(extension) {
+      return CONVERTER_URL_MIME_BY_EXTENSION[extension] || (NON_PNG_IMAGE_EXTENSIONS.has(extension) ? `image/${extension}` : "");
+    }
+
+    function normalizeConverterUrl(value) {
+      const trimmed = value.trim().replace(/^<|>$/g, "");
+      if (!trimmed) {
+        throw new Error("이미지 링크를 입력하세요.");
+      }
+      const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+      if (!["http:", "https:"].includes(url.protocol)) {
+        throw new Error("http 또는 https 이미지 링크만 지원합니다.");
+      }
+      return url;
+    }
+
+    function looksLikeConverterUrl(value) {
+      const trimmed = (value || "").trim();
+      if (!trimmed || /\s/.test(trimmed)) {
+        return false;
+      }
+      try {
+        const url = normalizeConverterUrl(trimmed);
+        const extension = extensionFromPathname(url.pathname);
+        return CONVERTER_URL_EXTENSIONS.has(extension) || /^https?:\/\//i.test(trimmed) || /^www\./i.test(trimmed);
+      } catch {
+        return false;
+      }
+    }
+
+    function converterFilenameFromUrl(url, mimeType) {
+      const rawName = url.pathname.split("/").filter(Boolean).pop() || "";
+      let decodedName = "";
+      try {
+        decodedName = decodeURIComponent(rawName);
+      } catch {
+        decodedName = rawName;
+      }
+      const extension = extensionFromPathname(url.pathname);
+      const mimeExtension = Object.entries(CONVERTER_URL_MIME_BY_EXTENSION)
+        .find(([, type]) => type === mimeType)?.[0] || "";
+      let fileName = decodedName || `linked-image.${extension || mimeExtension || "png"}`;
+      if (!/\.[a-z0-9]{2,5}$/i.test(fileName)) {
+        fileName = `${fileName}.${extension || mimeExtension || "png"}`;
+      }
+      return fileName.replace(/[<>:"/\\|?*\x00-\x1f]/g, "-") || "linked-image.png";
+    }
+
+    async function fetchConverterUrlFile(value) {
+      const url = normalizeConverterUrl(value);
+      const extension = extensionFromPathname(url.pathname);
+      const response = await fetch(url.href, {
+        cache: "no-store",
+        credentials: "omit",
+        referrerPolicy: "no-referrer"
+      });
+      if (!response.ok) {
+        throw new Error(`이미지 링크를 읽지 못했습니다. (${response.status})`);
+      }
+      const responseMime = cleanMimeType(response.headers.get("content-type"));
+      const extensionMime = mimeFromConverterExtension(extension);
+      const isSupportedByMime = responseMime.startsWith("image/") || responseMime === "application/pdf";
+      const isSupportedByExtension = CONVERTER_URL_EXTENSIONS.has(extension);
+      if (!isSupportedByMime && !isSupportedByExtension) {
+        throw new Error("이미지 또는 PDF 링크만 PNG 변환에 넣을 수 있습니다.");
+      }
+      const mimeType = isSupportedByMime ? responseMime : extensionMime;
+      const blob = await response.blob();
+      const fileName = converterFilenameFromUrl(url, mimeType);
+      return new File([blob], fileName, { type: mimeType || blob.type || extensionMime });
+    }
+
+    function converterUrlErrorMessage(error) {
+      if (error instanceof TypeError) {
+        return "브라우저에서 이 링크를 직접 읽지 못했습니다. 사이트가 접근을 막거나 주소가 응답하지 않으면 이미지를 복사해 붙여넣거나 다운로드 후 업로드하세요.";
+      }
+      return error.message || "이미지 링크를 불러오지 못했습니다.";
     }
 
     function sanitizeFilename(name) {
@@ -4606,6 +4732,7 @@
       app.activeConverterId = null;
       app.converterScaleRunId += 1;
       els.converterInput.value = "";
+      els.converterUrlInput.value = "";
       resetConverterScale();
       renderConverterList();
       clearConverterPreview();
@@ -4835,6 +4962,36 @@
       }
     }
 
+    async function addConverterUrl(value = els.converterUrlInput.value) {
+      const link = value.trim();
+      if (!link) {
+        setStatus(els.converterStatus, "이미지 링크를 입력하세요.", "warn");
+        els.converterUrlInput.focus();
+        return;
+      }
+      try {
+        normalizeConverterUrl(link);
+      } catch (error) {
+        setStatus(els.converterStatus, error.message, "error");
+        els.converterUrlInput.focus();
+        return;
+      }
+
+      setBusy(els.addConverterUrlBtn, true, "불러오는 중");
+      setConverterActivity("busy", "링크 읽는 중");
+      setStatus(els.converterStatus, "이미지 링크를 확인 중입니다.", "warn");
+      try {
+        const file = await fetchConverterUrlFile(link);
+        els.converterUrlInput.value = "";
+        await selectConverterFiles([file], { sync: false });
+      } catch (error) {
+        setConverterActivity("", "대기 중");
+        setStatus(els.converterStatus, converterUrlErrorMessage(error), "error");
+      } finally {
+        setBusy(els.addConverterUrlBtn, false);
+      }
+    }
+
     async function selectConverterFiles(fileList, options = {}) {
       const files = Array.from(fileList || []).filter(Boolean);
       if (!files.length) {
@@ -4882,7 +5039,14 @@
         .map((item) => item.getAsFile())
         .filter(Boolean);
       if (!files.length) {
-        setStatus(els.converterStatus, "붙여넣은 데이터에서 변환 가능한 파일을 찾지 못했습니다.", "warn");
+        const pastedText = event.clipboardData?.getData("text/plain")?.trim() || "";
+        if (looksLikeConverterUrl(pastedText)) {
+          event.preventDefault();
+          els.converterUrlInput.value = pastedText;
+          await addConverterUrl(pastedText);
+          return;
+        }
+        setStatus(els.converterStatus, "클립보드에서 이미지 파일이나 이미지 링크를 찾지 못했습니다.", "warn");
         return;
       }
       event.preventDefault();
@@ -8086,6 +8250,13 @@
 
       els.chooseConvertFileBtn.addEventListener("click", () => els.converterInput.click());
       els.converterInput.addEventListener("change", () => selectConverterFiles(els.converterInput.files));
+      els.addConverterUrlBtn.addEventListener("click", () => addConverterUrl());
+      els.converterUrlInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          addConverterUrl();
+        }
+      });
       els.converterZone.addEventListener("paste", handleConverterPaste);
       document.addEventListener("paste", (event) => {
         if (event.defaultPrevented) {
