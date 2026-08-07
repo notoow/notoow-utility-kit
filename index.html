@@ -2201,6 +2201,16 @@
                   <span class="switch-track"></span>
                 </label>
               </div>
+              <div class="setting-row">
+                <label class="setting-label" for="qrTransparentToggle">
+                  배경제거
+                  <span>PNG 저장 시 배경을 투명하게</span>
+                </label>
+                <label class="switch">
+                  <input id="qrTransparentToggle" type="checkbox">
+                  <span class="switch-track"></span>
+                </label>
+              </div>
               <p class="status" id="qrStatus" aria-live="polite">텍스트 또는 URL을 입력하세요.</p>
               <div class="action-row">
                 <button class="ios-btn primary" id="downloadQrBtn" type="button">
@@ -2487,17 +2497,17 @@
               <i data-lucide="files" stroke-width="2.5" width="20" height="20"></i>
             </div>
             <div class="widget-title">
-              <strong id="pdfTitle">이미지 PDF 만들기</strong>
-              <span>여러 이미지를 한 PDF로 묶기</span>
+              <strong id="pdfTitle">문서 PDF 만들기</strong>
+              <span>이미지와 PDF를 한 파일로 묶기</span>
             </div>
           </div>
 
-          <input class="hidden-input" id="pdfInput" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg">
+          <input class="hidden-input" id="pdfInput" type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/avif,image/svg+xml,application/pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.avif,.svg,.pdf,.hwp,.hwpx">
           <div class="paste-zone converter-zone" id="pdfZone" tabindex="0">
             <div class="converter-drop-head">
               <div>
-                <strong>이미지를 놓거나 선택</strong>
-                <span>선택 순서대로 페이지 생성</span>
+                <strong>이미지나 PDF를 놓거나 선택</strong>
+                <span>HWP/HWPX는 PDF 또는 PNG로 내보낸 뒤 사용</span>
               </div>
               <i data-lucide="file-up" stroke-width="2" width="20" height="20"></i>
             </div>
@@ -2535,7 +2545,7 @@
             <img id="pdfPreview" alt="PDF 첫 페이지 이미지 미리보기">
           </div>
 
-          <p class="status" id="pdfStatus" aria-live="polite">이미지를 선택하면 PDF를 자동 생성합니다.</p>
+          <p class="status" id="pdfStatus" aria-live="polite">이미지와 PDF를 선택하면 한 PDF로 자동 생성합니다.</p>
           <div class="action-row">
             <button class="ios-btn" id="choosePdfFileBtn" type="button">
               <i data-lucide="upload" stroke-width="2" width="16" height="16"></i>
@@ -2794,6 +2804,7 @@
       fileMode: "encrypt",
       qrTheme: "black",
       qrInvert: false,
+      qrTransparent: false,
       qr: null,
       converterItems: [],
       activeConverterId: null,
@@ -2861,7 +2872,7 @@
         autoCopyShortUrl: true,
         autoSaveOutputs: true
       },
-      version: "0.54"
+      version: "0.55"
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -2891,6 +2902,7 @@
       qrStatus: $("#qrStatus"),
       downloadQrBtn: $("#downloadQrBtn"),
       qrInvertToggle: $("#qrInvertToggle"),
+      qrTransparentToggle: $("#qrTransparentToggle"),
       converterInput: $("#converterInput"),
       converterUrlInput: $("#converterUrlInput"),
       addConverterUrlBtn: $("#addConverterUrlBtn"),
@@ -4129,8 +4141,11 @@
         const margin = 8;
         const cellSize = (size - margin * 2) / moduleCount;
 
-        context.fillStyle = theme.background;
-        context.fillRect(0, 0, size, size);
+        context.clearRect(0, 0, size, size);
+        if (!app.qrTransparent) {
+          context.fillStyle = theme.background;
+          context.fillRect(0, 0, size, size);
+        }
         context.fillStyle = theme.foreground;
         for (let row = 0; row < moduleCount; row += 1) {
           for (let col = 0; col < moduleCount; col += 1) {
@@ -5980,6 +5995,9 @@
       if (item.status === "error") {
         return item.error;
       }
+      if (item.kind === "pdf" && item.pageCount) {
+        return `${item.pageCount}페이지 PDF · ${formatBytes(item.encodedSize || item.file.size)}`;
+      }
       if (item.pageLabel) {
         return `${item.pageLabel} · ${formatBytes(item.encodedSize || item.file.size)}`;
       }
@@ -6031,10 +6049,14 @@
       app.pdfItems = files.map((file, index) => ({
         id: `ghost-${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
         file,
+        kind: "image",
         status: "ghost",
         previewUrl: "",
+        previewGenerated: false,
         asset: null,
+        assets: [],
         pageLabel: "",
+        pageCount: 0,
         encodedSize: 0,
         error: ""
       }));
@@ -6058,6 +6080,34 @@
 
     function isSupportedPdfImageFile(file) {
       return isSupportedResizeFile(file);
+    }
+
+    function isHwpDocumentFile(file) {
+      const extension = converterExtension(file);
+      return extension === "hwp" || extension === "hwpx";
+    }
+
+    function pdfSourceKind(file) {
+      if (isSupportedPdfImageFile(file)) {
+        return "image";
+      }
+      if (isPdfFile(file)) {
+        return "pdf";
+      }
+      if (isHwpDocumentFile(file)) {
+        return "hwp";
+      }
+      return "unsupported";
+    }
+
+    function isProcessablePdfSource(file) {
+      const kind = pdfSourceKind(file);
+      return kind === "image" || kind === "pdf";
+    }
+
+    function hwpPdfGuidance(file) {
+      const extension = converterExtension(file).toUpperCase();
+      return `${extension}는 브라우저에서 정확히 렌더링할 수 없습니다. 한글/웨일/폴라리스에서 PDF나 PNG로 내보낸 뒤 넣어주세요.`;
     }
 
     function getPdfOptions() {
@@ -6109,6 +6159,22 @@
       return new Uint8Array(await blob.arrayBuffer());
     }
 
+    async function createPdfAssetFromCanvas(canvas, sourceWidth, sourceHeight, options) {
+      const page = getPdfPageBox(sourceWidth, sourceHeight, options.pageSize);
+      const draw = getPdfDrawBox(page.width, page.height, canvas.width, canvas.height, options.margin);
+      return {
+        jpegBytes: await canvasToJpegBytes(canvas, options.quality),
+        imageWidth: canvas.width,
+        imageHeight: canvas.height,
+        pageWidth: page.width,
+        pageHeight: page.height,
+        drawX: draw.x,
+        drawY: draw.y,
+        drawWidth: draw.width,
+        drawHeight: draw.height
+      };
+    }
+
     async function createPdfImageAsset(file, options) {
       const image = await loadImageFromBlob(file);
       const sourceWidth = image.naturalWidth || image.width;
@@ -6131,19 +6197,42 @@
       context.imageSmoothingQuality = "high";
       context.drawImage(image, 0, 0, imageWidth, imageHeight);
 
-      const page = getPdfPageBox(sourceWidth, sourceHeight, options.pageSize);
-      const draw = getPdfDrawBox(page.width, page.height, imageWidth, imageHeight, options.margin);
-      return {
-        jpegBytes: await canvasToJpegBytes(canvas, options.quality),
-        imageWidth,
-        imageHeight,
-        pageWidth: page.width,
-        pageHeight: page.height,
-        drawX: draw.x,
-        drawY: draw.y,
-        drawWidth: draw.width,
-        drawHeight: draw.height
-      };
+      return createPdfAssetFromCanvas(canvas, sourceWidth, sourceHeight, options);
+    }
+
+    async function createPdfPageAssets(file, options, onPageStart) {
+      const pdfjs = await loadPdfJs();
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const pdf = await pdfjs.getDocument({ data: bytes }).promise;
+      const pageCount = pdf.numPages;
+      const assets = [];
+
+      for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+        onPageStart?.(pageNumber, pageCount);
+        const page = await pdf.getPage(pageNumber);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = Math.min(2.6, Math.max(1.35, 1800 / baseViewport.width));
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        const context = canvas.getContext("2d", { alpha: false });
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: context, viewport }).promise;
+        page.cleanup?.();
+        assets.push(await createPdfAssetFromCanvas(canvas, canvas.width, canvas.height, options));
+      }
+
+      await pdf.destroy?.();
+      return assets;
+    }
+
+    async function createPdfAssetsForItem(item, options, onPageStart) {
+      if (item.kind === "pdf") {
+        return createPdfPageAssets(item.file, options, onPageStart);
+      }
+      return [await createPdfImageAsset(item.file, options)];
     }
 
     function buildPdfDocument(assets) {
@@ -6224,9 +6313,23 @@
     function preparePdfRun() {
       clearPdfOutput();
       app.pdfItems.forEach((item) => {
+        if (!isProcessablePdfSource(item.file)) {
+          item.status = "error";
+          item.error = isHwpDocumentFile(item.file)
+            ? hwpPdfGuidance(item.file)
+            : "이미지 또는 PDF 파일만 PDF 생성에 넣을 수 있습니다.";
+          return;
+        }
+        if (item.previewGenerated && item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+          item.previewUrl = "";
+          item.previewGenerated = false;
+        }
         item.status = "queued";
         item.asset = null;
+        item.assets = [];
         item.pageLabel = "";
+        item.pageCount = 0;
         item.encodedSize = 0;
         item.error = "";
       });
@@ -6234,7 +6337,8 @@
     }
 
     async function processPdfItems(runId, rejectedCount = 0) {
-      const total = app.pdfItems.length;
+      const processItems = app.pdfItems.filter((item) => isProcessablePdfSource(item.file));
+      const total = processItems.length;
       if (!total) {
         return;
       }
@@ -6243,7 +6347,7 @@
       let completed = 0;
       let failed = 0;
 
-      for (const item of app.pdfItems) {
+      for (const item of processItems) {
         if (runId !== app.pdfRunId) {
           return;
         }
@@ -6251,13 +6355,28 @@
         renderPdfList();
         setPdfActivity("busy", `${completed}/${total} PDF 생성 중`);
         try {
-          const asset = await createPdfImageAsset(item.file, options);
+          const assets = await createPdfAssetsForItem(item, options, (pageNumber, pageCount) => {
+            if (runId === app.pdfRunId) {
+              setPdfActivity("busy", `${completed}/${total} · PDF ${pageNumber}/${pageCount}`);
+            }
+          });
           if (runId !== app.pdfRunId) {
             return;
           }
-          item.asset = asset;
-          item.pageLabel = `${Math.round(asset.pageWidth)}x${Math.round(asset.pageHeight)}pt`;
-          item.encodedSize = asset.jpegBytes.byteLength;
+          item.assets = assets;
+          item.asset = assets[0] || null;
+          item.pageCount = assets.length;
+          item.pageLabel = item.kind === "pdf"
+            ? `${assets.length}페이지`
+            : `${Math.round(item.asset.pageWidth)}x${Math.round(item.asset.pageHeight)}pt`;
+          item.encodedSize = assets.reduce((sum, asset) => sum + asset.jpegBytes.byteLength, 0);
+          if (item.kind === "pdf" && item.asset) {
+            if (item.previewGenerated && item.previewUrl) {
+              URL.revokeObjectURL(item.previewUrl);
+            }
+            item.previewUrl = URL.createObjectURL(new Blob([item.asset.jpegBytes], { type: "image/jpeg" }));
+            item.previewGenerated = true;
+          }
           item.status = "done";
           completed += 1;
           if (!app.activePdfId) {
@@ -6276,26 +6395,28 @@
         return;
       }
 
-      const assets = app.pdfItems.filter((item) => item.status === "done" && item.asset).map((item) => item.asset);
+      const assets = app.pdfItems
+        .filter((item) => item.status === "done" && item.assets?.length)
+        .flatMap((item) => item.assets);
       const skipped = rejectedCount ? ` · ${rejectedCount}개 제외` : "";
       if (!assets.length) {
         clearPdfOutput();
         setPdfActivity("error", "오류");
-        setStatus(els.pdfStatus, `PDF로 만들 수 있는 이미지가 없습니다.${skipped}`, "error");
+        setStatus(els.pdfStatus, `PDF로 만들 수 있는 이미지나 PDF가 없습니다.${skipped}`, "error");
         return;
       }
 
       app.pdfBlob = buildPdfDocument(assets);
-      app.pdfOutputName = `images-${Date.now()}.pdf`;
+      app.pdfOutputName = `documents-${Date.now()}.pdf`;
       if (failed) {
         setPdfActivity("error", `${completed}/${total} 완료 · ${failed} 실패`);
         setStatus(els.pdfStatus, `${completed}개 페이지 준비, ${failed}개 실패${skipped}`, "warn");
       } else {
-        setPdfActivity("done", `${completed}개 페이지`);
-        setStatus(els.pdfStatus, `${completed}개 이미지 PDF 생성 완료 (${formatBytes(app.pdfBlob.size)})${skipped}`, "ok");
+        setPdfActivity("done", `${assets.length}개 페이지`);
+        setStatus(els.pdfStatus, `${assets.length}개 페이지 PDF 생성 완료 (${formatBytes(app.pdfBlob.size)})${skipped}`, "ok");
         await autoSaveEntries(
           [{ name: app.pdfOutputName, blob: app.pdfBlob }],
-          `images-${Date.now()}.pdf`,
+          `documents-${Date.now()}.pdf`,
           els.pdfStatus,
           "PDF"
         );
@@ -6307,41 +6428,59 @@
       if (!files.length) {
         return;
       }
-      const supportedFiles = files.filter(isSupportedPdfImageFile);
+      const processableFiles = files.filter(isProcessablePdfSource);
+      const guideFiles = files.filter(isHwpDocumentFile);
+      const supportedFiles = [...processableFiles, ...guideFiles];
       const rejectedCount = files.length - supportedFiles.length;
       if (!supportedFiles.length) {
         resetPdfState();
-        setStatus(els.pdfStatus, "JPG, PNG, WebP, GIF, BMP, AVIF, SVG 파일을 지원합니다.", "error");
+        setStatus(els.pdfStatus, "JPG, PNG, WebP, GIF, BMP, AVIF, SVG, PDF 파일을 지원합니다.", "error");
         return;
       }
 
       const runId = app.pdfRunId + 1;
       resetPdfState();
       app.pdfRunId = runId;
-      app.pdfItems = supportedFiles.map((file, index) => ({
-        id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
-        file,
-        status: "queued",
-        previewUrl: URL.createObjectURL(file),
-        asset: null,
-        pageLabel: "",
-        encodedSize: 0,
-        error: ""
-      }));
-      app.activePdfId = app.pdfItems[0]?.id || null;
+      app.pdfItems = supportedFiles.map((file, index) => {
+        const kind = pdfSourceKind(file);
+        const processable = kind === "image" || kind === "pdf";
+        return {
+          id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
+          file,
+          kind,
+          status: processable ? "queued" : "error",
+          previewUrl: kind === "image" ? URL.createObjectURL(file) : "",
+          previewGenerated: false,
+          asset: null,
+          assets: [],
+          pageLabel: "",
+          pageCount: 0,
+          encodedSize: 0,
+          error: kind === "hwp" ? hwpPdfGuidance(file) : ""
+        };
+      });
+      app.activePdfId = app.pdfItems.find((item) => item.previewUrl)?.id || app.pdfItems.find((item) => item.kind === "pdf")?.id || null;
       renderPdfList();
       updatePdfPreview();
+      if (!processableFiles.length) {
+        setPdfActivity("error", "HWP 안내");
+        setStatus(els.pdfStatus, "HWP/HWPX는 브라우저에서 정확히 렌더링할 수 없습니다. PDF나 PNG로 내보낸 뒤 넣어주세요.", "warn");
+        return;
+      }
       setPdfActivity("busy", "준비 중");
-      setStatus(els.pdfStatus, `${app.pdfItems.length}개 이미지 PDF 생성 중`, "warn");
-      await processPdfItems(runId, rejectedCount);
+      setStatus(els.pdfStatus, `${processableFiles.length}개 파일 PDF 생성 중`, "warn");
+      await processPdfItems(runId, rejectedCount + guideFiles.length);
       if (options.sync !== false) {
-        await syncImageUploads(supportedFiles, "pdf");
+        await syncImageUploads(processableFiles.filter(isSupportedPdfImageFile), "pdf");
       }
     }
 
     function queuePdfReprocess() {
       els.pdfQualityValue.textContent = `${els.pdfQuality.value}%`;
       if (!app.pdfItems.length) {
+        return;
+      }
+      if (!app.pdfItems.some((item) => isProcessablePdfSource(item.file))) {
         return;
       }
       const runId = app.pdfRunId + 1;
@@ -6358,11 +6497,11 @@
     async function handlePdfPaste(event) {
       const items = Array.from(event.clipboardData?.items || []);
       const files = items
-        .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+        .filter((item) => item.kind === "file" && (item.type.startsWith("image/") || item.type === "application/pdf"))
         .map((item) => item.getAsFile())
         .filter(Boolean);
       if (!files.length) {
-        setStatus(els.pdfStatus, "붙여넣은 데이터에서 이미지를 찾지 못했습니다.", "warn");
+        setStatus(els.pdfStatus, "붙여넣은 데이터에서 이미지나 PDF를 찾지 못했습니다.", "warn");
         return;
       }
       event.preventDefault();
@@ -6371,14 +6510,14 @@
 
     async function savePdf() {
       if (!app.pdfBlob) {
-        setStatus(els.pdfStatus, "먼저 PDF로 만들 이미지를 선택하세요.", "warn");
+        setStatus(els.pdfStatus, "먼저 PDF로 만들 이미지나 PDF를 선택하세요.", "warn");
         els.pdfZone.focus();
         return;
       }
       try {
         const saved = await downloadEntries(
-          [{ name: app.pdfOutputName || `images-${Date.now()}.pdf`, blob: app.pdfBlob }],
-          `images-${Date.now()}.pdf`
+          [{ name: app.pdfOutputName || `documents-${Date.now()}.pdf`, blob: app.pdfBlob }],
+          `documents-${Date.now()}.pdf`
         );
         setStatus(els.pdfStatus, savedResultMessage(saved, "PDF"), "ok");
       } catch (error) {
@@ -8232,7 +8371,9 @@
       els.qrInput.value = "";
       app.qrTheme = "black";
       app.qrInvert = false;
+      app.qrTransparent = false;
       els.qrInvertToggle.checked = false;
+      els.qrTransparentToggle.checked = false;
       document.querySelectorAll('[data-segment-group="qrTheme"] .segment').forEach((segment) => {
         segment.classList.toggle("active", segment.dataset.value === app.qrTheme);
       });
@@ -8357,6 +8498,11 @@
         app.qrInvert = els.qrInvertToggle.checked;
         updateQr();
         setStatus(els.qrStatus, app.qrInvert ? "현재 QR 색상을 반전했습니다." : "QR 반전을 껐습니다.", "ok");
+      });
+      els.qrTransparentToggle.addEventListener("change", () => {
+        app.qrTransparent = els.qrTransparentToggle.checked;
+        updateQr();
+        setStatus(els.qrStatus, app.qrTransparent ? "QR 배경을 투명하게 설정했습니다." : "QR 배경을 다시 채웠습니다.", "ok");
       });
 
       els.chooseConvertFileBtn.addEventListener("click", () => els.converterInput.click());
