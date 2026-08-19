@@ -5,7 +5,7 @@ A single-file browser utility app with a polished translucent glass interface.
 ## Features
 
 - First-position batch PNG conversion for image files, including PNG re-save, ratio adjustment, 90-degree rotation, AVIF, WebP, JPG/JPEG, GIF, BMP, SVG, HEIC/HEIF, TIFF, ICO, JP2, PSD, RAW camera formats, and every page of PDF files
-- Browser-side video conversion to H.264 MP4 or GIF for MP4, MOV, MKV, WEBM, AVI, GIF, and related video formats, with MP4 audio removal and source metadata cleanup options
+- Browser-side video conversion to H.264 MP4 or GIF for MP4, MOV, MKV, WEBM, AVI, GIF, and related video formats, with MP4 audio removal, silent-track fallback, and source metadata cleanup options
 - Batch audio and video to MP3 conversion with ZIP bundling for multiple outputs
 - QR code generation with color themes, invert/background-removal toggles, and PNG export
 - Batch file encryption and decryption in the browser with AES-GCM

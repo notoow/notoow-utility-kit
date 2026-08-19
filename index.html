@@ -2077,11 +2077,11 @@
 
           <div class="setting-row video-option-row" id="videoAudioOptionRow">
             <label class="setting-label" for="videoAudioToggle">
-              오디오 포함
-              <span>끄면 MP4에서 소리 트랙을 완전히 제거합니다.</span>
+              오디오 제거
+              <span>켜면 MP4에서 소리 트랙을 완전히 제거합니다.</span>
             </label>
             <label class="switch">
-              <input id="videoAudioToggle" type="checkbox" checked>
+              <input id="videoAudioToggle" type="checkbox">
               <span class="switch-track"></span>
             </label>
           </div>
@@ -2859,7 +2859,7 @@
       pdfOutputName: "",
       imageSyncing: false,
       videoFormat: "mp4",
-      videoIncludeAudio: true,
+      videoRemoveAudio: false,
       videoStripMetadata: true,
       videoItems: [],
       activeVideoId: null,
@@ -6649,7 +6649,7 @@
       if (format === "gif") {
         return "GIF 출력 · 영상만 포함 · 메타데이터 옵션 미적용";
       }
-      const audio = app.videoIncludeAudio ? "오디오 포함" : "영상만";
+      const audio = app.videoRemoveAudio ? "오디오 제거" : "오디오 유지(없으면 무음 추가)";
       const metadata = app.videoStripMetadata ? "메타데이터 제거" : "메타데이터 유지";
       return `H.264 MP4 · ${audio} · ${metadata}`;
     }
@@ -6845,7 +6845,12 @@
       }
       const args = [
         "-y",
-        "-i", inputName,
+        "-i", inputName
+      ];
+      if (!options.removeAudio && !options.hasAudio) {
+        args.push("-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000");
+      }
+      args.push(
         "-map", "0:v:0",
         "-vf", "scale=trunc(max(iw\\,2)/2)*2:trunc(max(ih\\,2)/2)*2",
         "-c:v", "libx264",
@@ -6853,9 +6858,9 @@
         "-crf", "23",
         "-pix_fmt", "yuv420p",
         "-movflags", "+faststart"
-      ];
-      if (options.includeAudio) {
-        args.push("-map", "0:a?", "-c:a", "aac", "-b:a", "160k", "-shortest");
+      );
+      if (!options.removeAudio) {
+        args.push("-map", options.hasAudio ? "0:a:0" : "1:a:0", "-c:a", "aac", "-b:a", "160k", "-shortest");
       } else {
         args.push("-an");
       }
@@ -6866,14 +6871,35 @@
       return args;
     }
 
+    async function hasAudioStream(ffmpeg, inputName) {
+      try {
+        const result = await ffmpeg.exec([
+          "-v", "error",
+          "-i", inputName,
+          "-map", "0:a:0",
+          "-vn",
+          "-frames:a", "1",
+          "-f", "null",
+          "-"
+        ]);
+        return result === 0;
+      } catch (error) {
+        return false;
+      }
+    }
+
     async function convertVideoItem(ffmpeg, item, format, usedNames) {
       const extension = converterExtension(item.file) || (item.kind === "gif" ? "gif" : "video");
       const inputName = `input-${item.id}.${extension.replace(/[^a-z0-9]/gi, "") || "video"}`;
       const outputName = `output-${item.id}.${format}`;
       await ffmpeg.writeFile(inputName, await fetchBinaryFile(item.file));
       try {
+        const hasAudio = format === "mp4" && !app.videoRemoveAudio
+          ? await hasAudioStream(ffmpeg, inputName)
+          : false;
         await ffmpeg.exec(videoConvertArgs(format, inputName, outputName, {
-          includeAudio: app.videoIncludeAudio,
+          hasAudio,
+          removeAudio: app.videoRemoveAudio,
           stripMetadata: app.videoStripMetadata
         }));
         const data = await ffmpeg.readFile(outputName);
@@ -8443,9 +8469,9 @@
       });
       resetConverterState();
       app.videoFormat = "mp4";
-      app.videoIncludeAudio = true;
+      app.videoRemoveAudio = false;
       app.videoStripMetadata = true;
-      els.videoAudioToggle.checked = true;
+      els.videoAudioToggle.checked = false;
       els.videoMetadataToggle.checked = true;
       document.querySelectorAll('[data-segment-group="videoFormat"] .segment').forEach((segment) => {
         segment.classList.toggle("active", segment.dataset.value === app.videoFormat);
@@ -8639,7 +8665,7 @@
       els.convertVideoBtn.addEventListener("click", convertVideoFiles);
       els.saveVideoBtn.addEventListener("click", saveVideo);
       els.videoAudioToggle.addEventListener("change", () => {
-        app.videoIncludeAudio = els.videoAudioToggle.checked;
+        app.videoRemoveAudio = els.videoAudioToggle.checked;
         clearVideoOutput();
         updateVideoPreview();
         renderVideoList();
