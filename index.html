@@ -442,6 +442,14 @@
       padding: 10px 12px;
     }
 
+    .video-option-row.is-disabled {
+      opacity: 0.45;
+    }
+
+    .video-option-row.is-disabled .switch {
+      cursor: not-allowed;
+    }
+
     .setting-label {
       min-width: 0;
       display: flex;
@@ -2067,9 +2075,30 @@
             <button class="segment" type="button" data-value="gif">GIF</button>
           </div>
 
+          <div class="setting-row video-option-row" id="videoAudioOptionRow">
+            <label class="setting-label" for="videoAudioToggle">
+              오디오 포함
+              <span>끄면 MP4에서 소리 트랙을 완전히 제거합니다.</span>
+            </label>
+            <label class="switch">
+              <input id="videoAudioToggle" type="checkbox" checked>
+              <span class="switch-track"></span>
+            </label>
+          </div>
+          <div class="setting-row video-option-row" id="videoMetadataOptionRow">
+            <label class="setting-label" for="videoMetadataToggle">
+              메타데이터 제거
+              <span>촬영일·수정일 등 원본 메타데이터를 출력에서 제거합니다.</span>
+            </label>
+            <label class="switch">
+              <input id="videoMetadataToggle" type="checkbox" checked>
+              <span class="switch-track"></span>
+            </label>
+          </div>
+
           <div class="file-details" id="videoDetails">
             <strong>변환 대기</strong>
-            <span>첫 변환 때 FFmpeg 코어를 불러옵니다. 큰 영상은 시간이 걸릴 수 있습니다.</span>
+            <span>MP4는 오디오와 메타데이터 제거 여부를 선택할 수 있습니다.</span>
           </div>
           <div class="media-activity" id="videoActivity" aria-live="polite">
             <span class="converter-spinner" aria-hidden="true"></span>
@@ -2830,6 +2859,8 @@
       pdfOutputName: "",
       imageSyncing: false,
       videoFormat: "mp4",
+      videoIncludeAudio: true,
+      videoStripMetadata: true,
       videoItems: [],
       activeVideoId: null,
       videoRunId: 0,
@@ -2926,6 +2957,10 @@
       videoInput: $("#videoInput"),
       videoZone: $("#videoZone"),
       videoFileList: $("#videoFileList"),
+      videoAudioOptionRow: $("#videoAudioOptionRow"),
+      videoAudioToggle: $("#videoAudioToggle"),
+      videoMetadataOptionRow: $("#videoMetadataOptionRow"),
+      videoMetadataToggle: $("#videoMetadataToggle"),
       videoDetails: $("#videoDetails"),
       videoActivity: $("#videoActivity"),
       videoActivityText: $("#videoActivityText"),
@@ -6598,6 +6633,27 @@
       return app.videoFormat === "gif" ? "GIF" : "MP4";
     }
 
+    function syncVideoOptionControls() {
+      const mp4Selected = app.videoFormat === "mp4";
+      [
+        [els.videoAudioOptionRow, els.videoAudioToggle],
+        [els.videoMetadataOptionRow, els.videoMetadataToggle]
+      ].forEach(([row, input]) => {
+        row.classList.toggle("is-disabled", !mp4Selected);
+        input.disabled = !mp4Selected;
+        input.setAttribute("aria-disabled", String(!mp4Selected));
+      });
+    }
+
+    function videoOptionSummary(format = app.videoFormat) {
+      if (format === "gif") {
+        return "GIF 출력 · 영상만 포함 · 메타데이터 옵션 미적용";
+      }
+      const audio = app.videoIncludeAudio ? "오디오 포함" : "영상만";
+      const metadata = app.videoStripMetadata ? "메타데이터 제거" : "메타데이터 유지";
+      return `H.264 MP4 · ${audio} · ${metadata}`;
+    }
+
     function videoItemMeta(item) {
       if (item.status === "error") {
         return item.error;
@@ -6677,7 +6733,7 @@
       els.videoInput.value = "";
       renderVideoList();
       clearVideoPreview();
-      setVideoDetails("변환 대기", ["첫 변환 때 FFmpeg 코어를 불러옵니다. 큰 영상은 시간이 걸릴 수 있습니다."]);
+      setVideoDetails("변환 대기", ["첫 변환 때 FFmpeg 코어를 불러옵니다. 큰 영상은 시간이 걸릴 수 있습니다.", videoOptionSummary()]);
       setVideoActivity("", "대기 중");
       setStatus(els.videoStatus, "동영상을 선택한 뒤 MP4 또는 GIF로 변환하세요.");
     }
@@ -6777,7 +6833,7 @@
       return app.ffmpegReady;
     }
 
-    function videoConvertArgs(format, inputName, outputName) {
+    function videoConvertArgs(format, inputName, outputName, options = {}) {
       if (format === "gif") {
         return [
           "-y",
@@ -6787,22 +6843,27 @@
           outputName
         ];
       }
-      return [
+      const args = [
         "-y",
         "-i", inputName,
         "-map", "0:v:0",
-        "-map", "0:a?",
         "-vf", "scale=trunc(max(iw\\,2)/2)*2:trunc(max(ih\\,2)/2)*2",
         "-c:v", "libx264",
         "-preset", "veryfast",
         "-crf", "23",
         "-pix_fmt", "yuv420p",
-        "-movflags", "+faststart",
-        "-c:a", "aac",
-        "-b:a", "160k",
-        "-shortest",
-        outputName
+        "-movflags", "+faststart"
       ];
+      if (options.includeAudio) {
+        args.push("-map", "0:a?", "-c:a", "aac", "-b:a", "160k", "-shortest");
+      } else {
+        args.push("-an");
+      }
+      if (options.stripMetadata) {
+        args.push("-map_metadata", "-1", "-map_chapters", "-1", "-metadata", "creation_time=");
+      }
+      args.push(outputName);
+      return args;
     }
 
     async function convertVideoItem(ffmpeg, item, format, usedNames) {
@@ -6811,13 +6872,16 @@
       const outputName = `output-${item.id}.${format}`;
       await ffmpeg.writeFile(inputName, await fetchBinaryFile(item.file));
       try {
-        await ffmpeg.exec(videoConvertArgs(format, inputName, outputName));
+        await ffmpeg.exec(videoConvertArgs(format, inputName, outputName, {
+          includeAudio: app.videoIncludeAudio,
+          stripMetadata: app.videoStripMetadata
+        }));
         const data = await ffmpeg.readFile(outputName);
         const blob = new Blob([data], { type: format === "gif" ? "image/gif" : "video/mp4" });
         return {
           blob,
           outputName: uniqueOutputName(`${sanitizeFilename(item.file.name)}.${format}`, usedNames),
-          detail: format === "gif" ? "GIF" : "H.264 MP4"
+          detail: videoOptionSummary(format)
         };
       } finally {
         await ffmpeg.deleteFile(inputName).catch(() => {});
@@ -8378,6 +8442,15 @@
         segment.classList.toggle("active", segment.dataset.value === app.qrTheme);
       });
       resetConverterState();
+      app.videoFormat = "mp4";
+      app.videoIncludeAudio = true;
+      app.videoStripMetadata = true;
+      els.videoAudioToggle.checked = true;
+      els.videoMetadataToggle.checked = true;
+      document.querySelectorAll('[data-segment-group="videoFormat"] .segment').forEach((segment) => {
+        segment.classList.toggle("active", segment.dataset.value === app.videoFormat);
+      });
+      syncVideoOptionControls();
       resetVideoState();
       resetResizeState();
       resetCleanState();
@@ -8433,10 +8506,11 @@
       if (groupName === "videoFormat") {
         app.videoFormat = button.dataset.value === "gif" ? "gif" : "mp4";
         clearVideoOutput();
+        syncVideoOptionControls();
         updateVideoPreview();
         renderVideoList();
         setVideoActivity(app.videoItems.length ? "" : "", app.videoItems.length ? `${videoOutputLabel()} 준비` : "대기 중");
-        setStatus(els.videoStatus, app.videoItems.length ? `${videoOutputLabel()} 출력으로 설정했습니다. 변환을 실행하세요.` : `${videoOutputLabel()} 출력으로 설정했습니다.`, "ok");
+        setStatus(els.videoStatus, app.videoItems.length ? `${videoOutputLabel()} 출력으로 설정했습니다. ${videoOptionSummary()} · 변환을 실행하세요.` : `${videoOutputLabel()} 출력으로 설정했습니다.`, "ok");
       }
     }
 
@@ -8564,6 +8638,20 @@
       });
       els.convertVideoBtn.addEventListener("click", convertVideoFiles);
       els.saveVideoBtn.addEventListener("click", saveVideo);
+      els.videoAudioToggle.addEventListener("change", () => {
+        app.videoIncludeAudio = els.videoAudioToggle.checked;
+        clearVideoOutput();
+        updateVideoPreview();
+        renderVideoList();
+        setStatus(els.videoStatus, `${videoOptionSummary()}로 설정했습니다. 변환을 실행하세요.`, "ok");
+      });
+      els.videoMetadataToggle.addEventListener("change", () => {
+        app.videoStripMetadata = els.videoMetadataToggle.checked;
+        clearVideoOutput();
+        updateVideoPreview();
+        renderVideoList();
+        setStatus(els.videoStatus, `${videoOptionSummary()}로 설정했습니다. 변환을 실행하세요.`, "ok");
+      });
       ["dragenter", "dragover"].forEach((eventName) => {
         els.videoZone.addEventListener(eventName, (event) => {
           event.preventDefault();
@@ -8835,6 +8923,7 @@
       setFileMode(app.fileMode);
       setConverterActivity("", "대기 중");
       setVideoActivity("", "대기 중");
+      syncVideoOptionControls();
       setResizeActivity("", "대기 중");
       els.resizeQualityValue.textContent = `${els.resizeQuality.value}%`;
       setCleanActivity("", "대기 중");
