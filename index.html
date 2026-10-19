@@ -940,6 +940,49 @@
       gap: 12px;
     }
 
+    .timer-head-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      flex: 0 0 auto;
+    }
+
+    .timer-minimize-btn svg {
+      transition: transform 0.18s ease;
+    }
+
+    .floating-timer.is-minimized {
+      width: min(228px, calc(100vw - 28px));
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 18px;
+    }
+
+    .floating-timer.is-minimized .timer-head {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .floating-timer.is-minimized .timer-display {
+      order: 2;
+      flex: 0 0 auto;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .floating-timer.is-minimized .timer-inputs,
+    .floating-timer.is-minimized .timer-progress,
+    .floating-timer.is-minimized .timer-actions,
+    .floating-timer.is-minimized .timer-status {
+      display: none;
+    }
+
+    .floating-timer.is-minimized .timer-minimize-btn svg {
+      transform: rotate(180deg);
+    }
+
     .timer-title {
       display: flex;
       align-items: center;
@@ -1876,6 +1919,27 @@
         display: none;
       }
 
+      .floating-timer.is-minimized {
+        left: auto;
+        right: 12px;
+        bottom: 10px;
+        width: min(218px, calc(100vw - 24px));
+        padding: 7px 9px;
+        gap: 7px;
+      }
+
+      .floating-timer.is-minimized .timer-head {
+        grid-column: auto;
+      }
+
+      .floating-timer.is-minimized .timer-title {
+        font-size: 10px;
+      }
+
+      .floating-timer.is-minimized .timer-display {
+        font-size: 20px;
+      }
+
       .topbar,
       .utility-panel,
       .footer {
@@ -2789,9 +2853,14 @@
         <i data-lucide="timer" stroke-width="2" width="17" height="17"></i>
         <span id="timerTitle">Floating Timer</span>
       </div>
-      <button class="ios-btn icon-only" id="timerResetBtn" type="button" title="타이머 리셋" aria-label="타이머 리셋">
-        <i data-lucide="rotate-ccw" stroke-width="2" width="17" height="17"></i>
-      </button>
+      <div class="timer-head-actions">
+        <button class="ios-btn icon-only timer-minimize-btn" id="timerMinimizeBtn" type="button" title="타이머 최소화" aria-label="타이머 최소화" aria-expanded="true">
+          <i data-lucide="chevron-down" stroke-width="2" width="17" height="17"></i>
+        </button>
+        <button class="ios-btn icon-only" id="timerResetBtn" type="button" title="타이머 리셋" aria-label="타이머 리셋">
+          <i data-lucide="rotate-ccw" stroke-width="2" width="17" height="17"></i>
+        </button>
+      </div>
     </div>
     <div class="timer-display" id="timerDisplay" aria-live="polite">05:00</div>
     <div class="timer-inputs">
@@ -2893,6 +2962,7 @@
       timerAlarmTimeouts: [],
       timerAutoResetTimeout: 0,
       timerRunning: false,
+      timerMinimized: false,
       calcExpression: "",
       calcJustSolved: false,
       pdfjs: null,
@@ -3067,6 +3137,8 @@
       deleteReminderToggle: $("#deleteReminderToggle"),
       autoCopyToggle: $("#autoCopyToggle"),
       timerDisplay: $("#timerDisplay"),
+      floatingTimer: $(".floating-timer"),
+      timerMinimizeBtn: $("#timerMinimizeBtn"),
       timerMinutes: $("#timerMinutes"),
       timerSeconds: $("#timerSeconds"),
       timerProgress: $("#timerProgress"),
@@ -3082,6 +3154,7 @@
     };
 
     const SETTINGS_KEY = "notoow.utility.settings";
+    const TIMER_MINIMIZED_KEY = "notoow.utility.timer.minimized";
 
     function setGlobalStatus(message, type = "") {
       const cleanMessage = String(message || "").replace(/\s+/g, " ").trim() || "모든 도구가 준비됨";
@@ -3218,6 +3291,35 @@
       if (!busy && window.lucide) {
         lucide.createIcons();
       }
+    }
+
+    function setTimerMinimized(minimized, persist = true) {
+      app.timerMinimized = Boolean(minimized);
+      els.floatingTimer.classList.toggle("is-minimized", app.timerMinimized);
+      const label = app.timerMinimized ? "타이머 복원" : "타이머 최소화";
+      els.timerMinimizeBtn.title = label;
+      els.timerMinimizeBtn.setAttribute("aria-label", label);
+      els.timerMinimizeBtn.setAttribute("aria-expanded", String(!app.timerMinimized));
+      if (persist) {
+        try {
+          window.localStorage?.setItem(TIMER_MINIMIZED_KEY, String(app.timerMinimized));
+        } catch (error) {
+          // Keep the current visual state even when storage is unavailable.
+        }
+      }
+    }
+
+    function loadTimerMinimized() {
+      let saved = null;
+      try {
+        saved = window.localStorage?.getItem(TIMER_MINIMIZED_KEY);
+      } catch (error) {
+        saved = null;
+      }
+      const minimized = saved === null
+        ? Boolean(window.matchMedia?.("(max-width: 560px)").matches)
+        : saved === "true";
+      setTimerMinimized(minimized, false);
     }
 
     function clampInteger(value, min, max) {
@@ -8920,6 +9022,7 @@
         control.addEventListener("input", syncTimerFromInputs);
         control.addEventListener("change", syncTimerFromInputs);
       });
+      els.timerMinimizeBtn.addEventListener("click", () => setTimerMinimized(!app.timerMinimized));
       els.timerProgress.addEventListener("input", syncTimerFromSlider);
       els.timerProgress.addEventListener("change", syncTimerFromSlider);
       els.timerStartBtn.addEventListener("click", startTimer);
@@ -8958,6 +9061,7 @@
       els.pdfQualityValue.textContent = `${els.pdfQuality.value}%`;
       setBase64Mode(app.base64Mode, true);
       updateOutputFolderLabel();
+      loadTimerMinimized();
       updateTimerDisplay();
       renderCalculator();
       updateConverterScaleControls();
